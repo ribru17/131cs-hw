@@ -51,3 +51,19 @@ def is_duck_a(duck):
 
 def is_duck_b(duck):
     return isinstance(duck, Duck)
+
+
+def largest_sum(nums, k):
+    if k < 0 or k > len(nums):
+        raise ValueError
+    elif k == 0:
+        return 0
+
+    max_sum = None
+    for i in range(len(nums)-k+1):
+        sum = 0
+        for num in nums[i:i+k]:
+            sum += num
+        if max_sum is None or sum > max_sum:
+            max_sum = sum
+    return max_sum
