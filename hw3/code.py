@@ -108,3 +108,12 @@ class AdventCalendar(Calendar):
 
     def get_events(self):
         return Calendar.get_events(self)
+
+
+def closure_test():
+    def another_func():
+        a = 5
+        print(a)
+
+    another_func()
+    print(a)  # FAILS!

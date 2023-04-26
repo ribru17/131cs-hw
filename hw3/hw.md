@@ -164,3 +164,25 @@ class AdventCalendar(Calendar):
     def get_events(self):
         return Calendar.get_events(self)
 ```
+
+# 9.
+
+Python **does** support closures: while it is different from many other
+languages in that its variables can be accessed outside of certain scopes like
+`if` and `while` blocks, its variables **are** isolated in scope to the
+functions they are defined in. Below is an example of closures affecting Python
+behavior.
+
+```python
+def outer_func():
+    def another_func():
+        a = 5
+        print(a)
+
+    another_func()
+    print(a)  # FAILS! `a` is only defined in `another_func`
+```
+
+This is an example of a closure because it displays the fact that the variable
+`a` is only valid for a certain scope, and cannot be used outside of that scope.
+This is a closure.
