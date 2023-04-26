@@ -59,3 +59,24 @@ can be passed into the `len()` function and no `TypeError` will be thrown
 because that object's implementation for the `len()` method exists. An `int`
 object does not implement this method so when the program tries to call it on an
 `int` it throws an error.
+
+# 6.
+
+## a)
+
+```python
+class Squid:
+    def __init__(self):
+        pass
+
+    def quack(self):
+        print("Squid")
+```
+
+## b)
+
+```python
+class Dack(Duck):
+    def __init__(self):
+        pass
+```

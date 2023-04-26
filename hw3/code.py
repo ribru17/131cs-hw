@@ -21,3 +21,33 @@ def squares_dict(lower_bound, upper_bound):
 
 def strip_characters(sentence, chars_to_remove):
     return "".join([x for x in sentence if x not in chars_to_remove])
+
+
+class Duck:
+    def __init__(self):
+        pass  # Empty initializer
+
+
+class Squid:
+    def __init__(self):
+        pass
+
+    def quack(self):
+        print("Squid")
+
+
+class Dack(Duck):
+    def __init__(self):
+        pass
+
+
+def is_duck_a(duck):
+    try:
+        duck.quack()
+        return True
+    except:
+        return False
+
+
+def is_duck_b(duck):
+    return isinstance(duck, Duck)
