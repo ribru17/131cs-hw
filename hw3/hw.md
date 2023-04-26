@@ -30,3 +30,5 @@ def unique_characters(sentence):
 def squares_dict(lower_bound, upper_bound):
     return {x: x**2 for x in range(lower_bound, upper_bound+1)}
 ```
+
+# 3.

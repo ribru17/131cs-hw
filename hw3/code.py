@@ -19,4 +19,8 @@ def squares_dict(lower_bound, upper_bound):
     return {x: x**2 for x in range(lower_bound, upper_bound+1)}
 
 
-print(squares_dict(1, 5))
+def strip_characters(sentence, chars_to_remove):
+    return "".join([x for x in sentence if x not in chars_to_remove])
+
+
+print(strip_characters("Hello, world!", {"o", "h", "l"}))
