@@ -67,3 +67,44 @@ def largest_sum(nums, k):
         if max_sum is None or sum > max_sum:
             max_sum = sum
     return max_sum
+
+
+class Event():
+    def __init__(self, start_time, end_time):
+        if start_time >= end_time:
+            raise ValueError
+
+        self.start_time = start_time
+        self.end_time = end_time
+
+
+class Calendar():
+    def __init__(self):
+        self.__events = []
+
+    def get_events(self):
+        return self.__events
+
+    def add_event(self, event):
+        if not isinstance(event, Event):
+            raise TypeError
+
+        self.__events.append(event)
+
+
+# class AdventCalendar(Calendar):
+#     def __init__(self, year):
+#         self.year = year
+#         Calendar.__init__(self)
+
+#     def get_events(self):
+#         return super().get_events()
+
+
+class AdventCalendar(Calendar):
+    def __init__(self, year):
+        self.year = year
+        Calendar.__init__(self)
+
+    def get_events(self):
+        return Calendar.get_events(self)
