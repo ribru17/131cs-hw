@@ -132,9 +132,11 @@ class Statement():
                 print('TODO')
             case InterpreterBase.PRINT_DEF:
                 value = self.__run_expression(self.params[0])
-                if isinstance(value, bool):
-                    value = (InterpreterBase.TRUE_DEF if value
+                if value.value_type == InterpreterBase.BOOL_DEF:
+                    value = (InterpreterBase.TRUE_DEF if value.value
                              else InterpreterBase.FALSE_DEF)
+                else:
+                    value = value.value
                 InterpreterBase(self).output(value)
             case InterpreterBase.RETURN_DEF:
                 print('TODO')
@@ -153,33 +155,60 @@ class Statement():
                     lhs = self.__run_expression(expr[1])
                     rhs = self.__run_expression(expr[2])
 
-                    if ((type(lhs) is int and type(rhs) is int) or
-                            (isinstance(lhs, str) and isinstance(rhs, str))):
-                        return lhs + rhs
+                    if (lhs.value_type == InterpreterBase.INT_DEF and
+                            rhs.value_type == InterpreterBase.INT_DEF):
+                        return Value(str(lhs.value + rhs.value))
+                    elif (lhs.value_type == InterpreterBase.STRING_DEF and
+                          rhs.value_type == InterpreterBase.STRING_DEF):
+                        return Value('"{}"'.format(lhs.value + rhs.value))
                     else:
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
                 case '-' | '*' | '/' | '%':
                     lhs = self.__run_expression(expr[1])
                     rhs = self.__run_expression(expr[2])
 
-                    if not (type(lhs) is int and type(rhs) is int):
+                    if not (lhs.value_type == InterpreterBase.INT_DEF and
+                            rhs.value_type == InterpreterBase.INT_DEF):
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
 
-                    return int(eval(str(self.__run_expression(expr[1])) +
-                                    operator +
-                                    str(self.__run_expression(expr[2]))))
-                case '<' | '<=' | '>' | '>=' | '==' | '!=':
+                    return Value(str(int(
+                        eval(str(self.__run_expression(expr[1]).value) +
+                             operator +
+                             str(self.__run_expression(expr[2]).value)))))
+                case '<' | '<=' | '>' | '>=':
                     lhs = self.__run_expression(expr[1])
                     rhs = self.__run_expression(expr[2])
 
-                    if type(lhs) is int and type(rhs) is int:
-                        return eval(lhs + operator + rhs)
-                    elif (isinstance(lhs, str) and isinstance(rhs, str)):
-                        return eval('"{}"{}"{}"'.format(lhs, operator, rhs))
+                    if (lhs.value_type == InterpreterBase.INT_DEF and
+                            rhs.value_type == InterpreterBase.INT_DEF):
+                        return Value(str(eval(str(lhs.value) + operator +
+                                              str(rhs.value))).lower())
+                    elif (lhs.value_type == InterpreterBase.STRING_DEF and
+                            rhs.value_type == InterpreterBase.STRING_DEF):
+                        return Value(str(eval(
+                            '"{}"{}"{}"'.format(lhs.value,
+                                                operator, rhs.value))).lower())
+                    else:
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                case '==' | '!=':
+                    # TODO: should be able to compare null and object
+                    lhs = self.__run_expression(expr[1])
+                    rhs = self.__run_expression(expr[2])
+
+                    if (lhs.value_type == InterpreterBase.STRING_DEF and
+                            rhs.value_type == InterpreterBase.STRING_DEF):
+                        return Value(str(eval(
+                            '"{}"{}"{}"'.format(lhs.value,
+                                                operator, rhs.value))).lower())
+                    # elif isinstance(lhs.value, None) and isinstance(rhs.value, str):
+                    #     return Value(eval('"{}"{}"{}"'.format(lhs.value, operator, rhs.value)))
+                    elif (lhs.value_type == InterpreterBase.INT_DEF and
+                            rhs.value_type == InterpreterBase.INT_DEF):
+                        return Value(str(eval(str(lhs.value) + operator + str(rhs.value))).lower())
                     else:
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
         else:
-            return Value(expr).value
+            return Value(expr)
 
 
 # program = ['(class main',
@@ -196,21 +225,31 @@ program = [
     '))',
     ')',
     '(class main',
-    '(method main () (print (- 48 0)))',
-    # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',
+    # '(method main () (print (+ 99 80)))',
+    # '(method main () (print (+ "hi" " there")))',
+    # '(method main () (print (> "zi" "there")))',
+    # '(method main () (print (> 99 -100)))',
+    # '(method main () (print (> 99 true)))',
+    # '(method main () (print (== "99" "990")))',
+    '(method main () (print (!= 991 991)))',
+    # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',  # 28
+    # '(method main () (print (+ 1 (* (- 99 "hi") (/ 900 100)))))',
     # '(method main () (print "hello world"))',
     # '    (method main () (begin',
     # '        (set guy (new other))',
     # '        (call guy hi)',
     # '    ))',
     ')'
+
+
 ]
 
 
 interpreter = Interpreter()
 interpreter.run(program)
 
-# print(str("'hi'"))
+# print(Value('null'))
+
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
 
