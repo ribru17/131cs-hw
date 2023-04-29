@@ -12,17 +12,48 @@ class Interpreter(InterpreterBase):
             super().error(ErrorType.SYNTAX_ERROR)
             return
 
+        self.classes = []
+        for class_def in parsed_program:
+            if class_def[0] != InterpreterBase.CLASS_DEF:
+                print("BAD")
+                return
+            class_name = class_def[1]
+            fields = []
+            methods = []
+            for item in class_def[2:]:
+                if item[0] == InterpreterBase.FIELD_DEF:
+                    fields.append(Variable(item[1], item[2]))
+                elif item[0] == InterpreterBase.METHOD_DEF:
+                    methods.append(Method())
+
 
 class Variable():
     def __init__(self, name, value):
         self.name = name
-        self.value = value
+        self.value = Value(value)
 
 
 class Value():
-    def __init__(self, value_type, value):
-        self.value_type = value_type
-        self.value = value
+    def __init__(self, value):
+        if value == InterpreterBase.TRUE_DEF:
+            self.value = True
+            self.value_type = InterpreterBase.BOOL_DEF
+        elif value == InterpreterBase.FALSE_DEF:
+            self.value = False
+            self.value_type = InterpreterBase.BOOL_DEF
+        elif value == InterpreterBase.NULL_DEF:
+            self.value_type = InterpreterBase.VOID_DEF
+            self.value = None
+        elif value[0] == value[-1] == '"':
+            self.value_type = InterpreterBase.STRING_DEF
+            self.value = value.strip('"')
+        else:
+            try:
+                self.value = int(value)
+                self.value_type = InterpreterBase.INT_DEF
+            except ValueError:
+                print('BAD VALUE')
+                return
 
 
 class Method():
@@ -76,7 +107,12 @@ class Class():
 
 program = [
     '(class other',
-    '(method hi () (print "hi"))',
+    '(field hif 4)',
+    '(field hit 5)',
+    '(method hi () (begin',
+    '(print "hi")',
+    '(print "hi")',
+    '))',
     ')',
     '(class main',
     '(method hello_world () (print "hello world!"))',
@@ -84,5 +120,11 @@ program = [
 ]
 
 
-interpreter = Interpreter()
-interpreter.run(program)
+# interpreter = Interpreter()
+# interpreter.run(program)
+success, parsed_program = BParser.parse(program)
+print(parsed_program)
+# try:
+#     print(int('1b23'))
+# except ValueError:
+#     print('bad')

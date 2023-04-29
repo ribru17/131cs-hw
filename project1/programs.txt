@@ -1,0 +1,33 @@
+(class other
+    (field hif 4)
+    (field hit 5)
+    (method hi () (begin
+        (print "hi")
+        (print "hi")
+    ))
+)
+
+(class main
+    (field guy null)
+    (method main () (begin
+        (set guy (new other))
+        (call guy hi)
+    ))
+)
+
+(class other
+    (field hif 4)
+    (field hit 5)
+    (method hi () (begin
+        (print "hi")
+        (print "hi")
+    ))
+)
+
+(class main
+    (field guy null)
+    (method main () (begin
+        (set guy (new other))
+        (call guy hi)
+    ))
+)
