@@ -24,14 +24,44 @@ class Interpreter(InterpreterBase):
                 if item[0] == InterpreterBase.FIELD_DEF:
                     fields.append(Variable(item[1], item[2]))
                 elif item[0] == InterpreterBase.METHOD_DEF:
-                    methods.append(Method(item[1], item[2], item[3]))
+                    methods.append(
+                        Method(item[1], item[2],
+                               Statement(item[3][0], item[3][1:])))
                 else:
                     super().error(ErrorType.SYNTAX_ERROR)
                     return
             self.classes.append(Class(class_name, fields, methods))
 
+        self.__get_class(super().MAIN_CLASS_DEF).run_method(
+            super().MAIN_FUNC_DEF)
+
+    def __get_class(self, class_name):
         for class_def in self.classes:
-            print(class_def)
+            if class_def.name == class_name:
+                return class_def
+
+        return None
+
+
+class Class():
+    def __init__(self, name, fields, methods):
+        self.name = name
+        self.fields = fields
+        self.methods = methods
+
+    def run_method(self, method_name):
+        self.__get_method(method_name).run()
+
+    def __get_method(self, method_name):
+        for method in self.methods:
+            if method.name == method_name:
+                return method
+
+        return None
+
+    def __str__(self):
+        return (self.name + ' ' + str([str(x) for x in self.fields]) + ' ' +
+                str([str(x) for x in self.methods]))
 
 
 class Variable():
@@ -43,7 +73,7 @@ class Variable():
         return self.name + ' ' + str(self.value)
 
 
-class Value(InterpreterBase):
+class Value():
     def __init__(self, value):
         if value == InterpreterBase.TRUE_DEF:
             self.value = True
@@ -62,7 +92,7 @@ class Value(InterpreterBase):
                 self.value = int(value)
                 self.value_type = InterpreterBase.INT_DEF
             except ValueError:
-                super().error(ErrorType.SYNTAX_ERROR)
+                InterpreterBase(self).error(ErrorType.SYNTAX_ERROR)
                 return
 
     def __str__(self):
@@ -70,17 +100,16 @@ class Value(InterpreterBase):
 
 
 class Method():
-    def __init__(self, name, params, statements):
+    def __init__(self, name, params, statement):
         self.name = name
         self.params = params
-        self.statements = statements
+        self.statement = statement
 
     def run(self):
-        for statement in self.statements:
-            statement.run()
+        self.statement.run()
 
     def __str__(self):
-        return self.name + ' ' + str(self.params) + ' ' + str(self.statements)
+        return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
 
 
 class Statement():
@@ -92,6 +121,7 @@ class Statement():
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 print('TODO')
+                print(self.params)
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
@@ -101,24 +131,38 @@ class Statement():
             case InterpreterBase.INPUT_STRING_DEF:
                 print('TODO')
             case InterpreterBase.PRINT_DEF:
-                print('TODO')
+                value = self.__run_expression(self.params[0])
+                if isinstance(value, bool):
+                    value = (InterpreterBase.TRUE_DEF if value
+                             else InterpreterBase.FALSE_DEF)
+                InterpreterBase(self).output(value)
             case InterpreterBase.RETURN_DEF:
                 print('TODO')
             case InterpreterBase.SET_DEF:
                 print('TODO')
             case InterpreterBase.WHILE_DEF:
                 print('TODO')
+            case _:
+                InterpreterBase(self).error(ErrorType.SYNTAX_ERROR)
 
-
-class Class():
-    def __init__(self, name, fields, methods):
-        self.name = name
-        self.fields = fields
-        self.methods = methods
-
-    def __str__(self):
-        return (self.name + ' ' + str([str(x) for x in self.fields]) + ' ' +
-                str([str(x) for x in self.methods]))
+    def __run_expression(self, expr):
+        if isinstance(expr, list):
+            operator = expr[0]
+            match operator:
+                case '+' | '-' | '*' | '/' | '%':
+                    return int(eval(str(self.__run_expression(expr[1])) +
+                                    operator +
+                                    str(self.__run_expression(expr[2]))))
+                case '<' | '<=' | '>' | '>=' | '==' | '!=':
+                    lhs = str(self.__run_expression(expr[1]))
+                    rhs = str(self.__run_expression(expr[2]))
+                    if ((isinstance(lhs, int) and isinstance(rhs, int)) or
+                            (isinstance(lhs, str) and isinstance(rhs, str))):
+                        return eval(lhs + operator + rhs)
+                    else:
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+        else:
+            return Value(expr).value
 
 
 # program = ['(class main',
@@ -135,17 +179,30 @@ program = [
     '))',
     ')',
     '(class main',
-    '(method hello_world () (print "hello world!"))',
+    '(method main () (print (!= 9 9)))',
+    # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',
+    # '(method main () (print "hello world"))',
+    # '    (method main () (begin',
+    # '        (set guy (new other))',
+    # '        (call guy hi)',
+    # '    ))',
     ')'
 ]
 
 
 interpreter = Interpreter()
 interpreter.run(program)
+
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
+print('zzz' > 'aaaa')
+print('aaab' > 'aaaa')
+print('aaaa' > 'aaa')
+print('hi' + ' there')
 
 # try:
 #     print(int('1b23'))
 # except ValueError:
 #     print('bad')
+# mydict = {}
+# print(mydict['hello'] or 'not here')
