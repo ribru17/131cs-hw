@@ -15,7 +15,7 @@ class Interpreter(InterpreterBase):
         self.classes = []
         for class_def in parsed_program:
             if class_def[0] != InterpreterBase.CLASS_DEF:
-                print("BAD")
+                super().error(ErrorType.SYNTAX_ERROR)
                 return
             class_name = class_def[1]
             fields = []
@@ -24,7 +24,14 @@ class Interpreter(InterpreterBase):
                 if item[0] == InterpreterBase.FIELD_DEF:
                     fields.append(Variable(item[1], item[2]))
                 elif item[0] == InterpreterBase.METHOD_DEF:
-                    methods.append(Method())
+                    methods.append(Method(item[1], item[2], item[3]))
+                else:
+                    super().error(ErrorType.SYNTAX_ERROR)
+                    return
+            self.classes.append(Class(class_name, fields, methods))
+
+        for class_def in self.classes:
+            print(class_def)
 
 
 class Variable():
@@ -32,8 +39,11 @@ class Variable():
         self.name = name
         self.value = Value(value)
 
+    def __str__(self):
+        return self.name + ' ' + str(self.value)
 
-class Value():
+
+class Value(InterpreterBase):
     def __init__(self, value):
         if value == InterpreterBase.TRUE_DEF:
             self.value = True
@@ -52,8 +62,11 @@ class Value():
                 self.value = int(value)
                 self.value_type = InterpreterBase.INT_DEF
             except ValueError:
-                print('BAD VALUE')
+                super().error(ErrorType.SYNTAX_ERROR)
                 return
+
+    def __str__(self):
+        return self.value_type + ' ' + str(self.value)
 
 
 class Method():
@@ -65,6 +78,9 @@ class Method():
     def run(self):
         for statement in self.statements:
             statement.run()
+
+    def __str__(self):
+        return self.name + ' ' + str(self.params) + ' ' + str(self.statements)
 
 
 class Statement():
@@ -100,6 +116,10 @@ class Class():
         self.fields = fields
         self.methods = methods
 
+    def __str__(self):
+        return (self.name + ' ' + str([str(x) for x in self.fields]) + ' ' +
+                str([str(x) for x in self.methods]))
+
 
 # program = ['(class main',
 #            '(method hello_world () (print "hello world!"))',
@@ -120,10 +140,11 @@ program = [
 ]
 
 
-# interpreter = Interpreter()
-# interpreter.run(program)
-success, parsed_program = BParser.parse(program)
-print(parsed_program)
+interpreter = Interpreter()
+interpreter.run(program)
+# success, parsed_program = BParser.parse(program)
+# print(parsed_program)
+
 # try:
 #     print(int('1b23'))
 # except ValueError:
