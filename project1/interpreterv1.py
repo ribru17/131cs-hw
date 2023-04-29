@@ -51,7 +51,7 @@ class Interpreter(InterpreterBase):
             self.classes[class_name] = Class(class_name, fields, methods)
 
         self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
-            super().MAIN_FUNC_DEF, super())
+            super().MAIN_FUNC_DEF, super(), self)
 
     def get_class(self, class_name):
         try:
@@ -86,9 +86,9 @@ class ClassInstance():
         self.fields = deepcopy(fields)
         self.methods = deepcopy(methods)
 
-    def run_method(self, method_name, base):
+    def run_method(self, method_name, base, intr):
         try:
-            self.get_method(method_name).run(self.fields, base)
+            self.get_method(method_name).run(self.fields, base, intr)
         except KeyError:
             base.error(ErrorType.NAME_ERROR,
                        "Unknown method {}".format(method_name))
@@ -97,7 +97,7 @@ class ClassInstance():
         return self.methods[method_name]
 
     def __str__(self):
-        return 'Class instance of ' + self.name
+        return '<Class instance of {}>'.format(self.name)
 
 
 class Variable():
@@ -122,10 +122,12 @@ class Value():
         elif value == InterpreterBase.NULL_DEF:
             self.value_type = InterpreterBase.VOID_DEF
             self.value = None
+        elif isinstance(value, ClassInstance):
+            self.value_type = InterpreterBase.CLASS_DEF
+            self.value = value
         elif value[0] == value[-1] == '"':
             self.value_type = InterpreterBase.STRING_DEF
             self.value = value.strip('"')
-            # TODO: add case for instantiated class
         else:
             try:
                 self.value = int(value)
@@ -140,10 +142,14 @@ class Value():
                     self.value_type = fields[value].value.value_type
                 except KeyError:
                     # var doesn't exist
-                    InterpreterBase(self).error(ErrorType.NAME_ERROR)
+                    InterpreterBase(self).error(
+                        ErrorType.NAME_ERROR,
+                        "Unknown variable {}".format(value))
                 except TypeError:
                     # cannot initialize var with other var!
-                    InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                    InterpreterBase(self).error(
+                        ErrorType.TYPE_ERROR,
+                        "Field must be initialized with a constant")
 
     def __str__(self):
         return self.value_type + ' ' + str(self.value)
@@ -155,8 +161,8 @@ class Method():
         self.params = params
         self.statement = statement
 
-    def run(self, fields, base):
-        self.statement.run(fields, base)
+    def run(self, fields, base, intr):
+        self.statement.run(fields, base, intr)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -167,28 +173,30 @@ class Statement():
         self.statement_type = statement_type
         self.params = params
 
-    def run(self, vars, base):
+    def run(self, vars, base, intr):
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
-                    Statement(statement[0], statement[1:]).run(vars, base)
+                    Statement(statement[0], statement[1:]).run(
+                        vars, base, intr)
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
-                condition = self.__run_expression(self.params[0], vars, base)
+                condition = self.__run_expression(
+                    self.params[0], vars, base, intr)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
                     base.error(ErrorType.TYPE_ERROR,
                                "non-boolean if condition")
 
                 if condition.value is True:
                     Statement(self.params[1][0],
-                              self.params[1][1:]).run(vars, base)
+                              self.params[1][1:]).run(vars, base, intr)
                 else:
                     if len(self.params) < 3:
                         return
                     elif len(self.params) == 3:
                         Statement(self.params[2][0],
-                                  self.params[2][1:]).run(vars, base)
+                                  self.params[2][1:]).run(vars, base, intr)
                     else:
                         base.error(
                             ErrorType.SYNTAX_ERROR, "Too many `if` branches")
@@ -213,7 +221,7 @@ class Statement():
             case InterpreterBase.PRINT_DEF:
                 out_string = ''
                 for param in self.params:
-                    value = self.__run_expression(param, vars, base)
+                    value = self.__run_expression(param, vars, base, intr)
                     if value.value_type == InterpreterBase.BOOL_DEF:
                         value = (InterpreterBase.TRUE_DEF if value.value
                                  else InterpreterBase.FALSE_DEF)
@@ -227,28 +235,29 @@ class Statement():
             case InterpreterBase.SET_DEF:
                 # print(self.params)
                 vars[self.params[0]].value = self.__run_expression(
-                    self.params[1], vars, base)
+                    self.params[1], vars, base, intr)
             case InterpreterBase.WHILE_DEF:
-                condition = self.__run_expression(self.params[0], vars, base)
+                condition = self.__run_expression(
+                    self.params[0], vars, base, intr)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
                     base.error(
                         ErrorType.TYPE_ERROR, "Non-boolean while condition")
                 while condition.value is True:
                     Statement(self.params[1][0],
-                              self.params[1][1:]).run(vars, base)
+                              self.params[1][1:]).run(vars, base, intr)
                     condition = self.__run_expression(
-                        self.params[0], vars, base)
+                        self.params[0], vars, base, intr)
             case other:
                 base.error(ErrorType.SYNTAX_ERROR,
                            "Unknown statement {}".format(other))
 
-    def __run_expression(self, expr, vars, base):
+    def __run_expression(self, expr, vars, base, intr):
         if isinstance(expr, list):
             operator = expr[0]
             match operator:
                 case '+':
-                    lhs = self.__run_expression(expr[1], vars, base)
-                    rhs = self.__run_expression(expr[2], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
+                    rhs = self.__run_expression(expr[2], vars, base, intr)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
@@ -261,8 +270,8 @@ class Statement():
                         base.error(ErrorType.TYPE_ERROR,
                                    "Can only add two ints or two strings")
                 case '-' | '*' | '/' | '%':
-                    lhs = self.__run_expression(expr[1], vars, base)
-                    rhs = self.__run_expression(expr[2], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
+                    rhs = self.__run_expression(expr[2], vars, base, intr)
 
                     if not (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
@@ -274,8 +283,8 @@ class Statement():
                              operator +
                              str(rhs.value)))), vars)
                 case '<' | '<=' | '>' | '>=':
-                    lhs = self.__run_expression(expr[1], vars, base)
-                    rhs = self.__run_expression(expr[2], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
+                    rhs = self.__run_expression(expr[2], vars, base, intr)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
@@ -293,9 +302,8 @@ class Statement():
                             "Must perform this operation\
                             on two ints or two strings")
                 case '==' | '!=':
-                    # TODO: should be able to compare null and object
-                    lhs = self.__run_expression(expr[1], vars, base)
-                    rhs = self.__run_expression(expr[2], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
+                    rhs = self.__run_expression(expr[2], vars, base, intr)
 
                     if (lhs.value_type == InterpreterBase.STRING_DEF and
                             rhs.value_type == InterpreterBase.STRING_DEF):
@@ -311,12 +319,22 @@ class Statement():
                             rhs.value_type == InterpreterBase.BOOL_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(), vars)
+                    elif ((lhs.value_type == InterpreterBase.VOID_DEF or
+                            lhs.value_type == InterpreterBase.CLASS_DEF) and
+                            (lhs.value_type == InterpreterBase.VOID_DEF or
+                                lhs.value_type == InterpreterBase.CLASS_DEF)):
+                        if operator == '==':
+                            return Value(str(lhs.value == rhs.value).lower(),
+                                         vars)
+                        else:
+                            return Value(str(lhs.value != rhs.value).lower(),
+                                         vars)
                     else:
                         base.error(ErrorType.TYPE_ERROR,
                                    "Incompatible types for equality operation")
                 case '&' | '|':
-                    lhs = self.__run_expression(expr[1], vars, base)
-                    rhs = self.__run_expression(expr[2], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
+                    rhs = self.__run_expression(expr[2], vars, base, intr)
 
                     if (lhs.value_type == InterpreterBase.BOOL_DEF and
                             rhs.value_type == InterpreterBase.BOOL_DEF):
@@ -326,15 +344,16 @@ class Statement():
                         base.error(ErrorType.TYPE_ERROR,
                                    "Both operands must be booleans")
                 case '!':
-                    lhs = self.__run_expression(expr[1], vars, base)
+                    lhs = self.__run_expression(expr[1], vars, base, intr)
                     if lhs.value_type == InterpreterBase.BOOL_DEF:
                         return Value(str(not lhs.value).lower(), vars)
                     else:
                         base.error(ErrorType.TYPE_ERROR,
                                    "Can only perform `not` on a boolean")
                 case InterpreterBase.NEW_DEF:
-                    # class_name = expr[1]
-                    return Value('1', vars)
+                    class_name = expr[1]
+                    new_instance = intr.get_class(class_name).instantiate()
+                    return Value(new_instance, vars)
                 case other:
                     base.error(ErrorType.SYNTAX_ERROR,
                                "Unknown operator {}".format(other))
@@ -353,16 +372,10 @@ program = [
     '))',
     ')',
     '(class main',
-    # '(method main () (print (+ 99 80)))',
-    # '(method main () (print (+ "hi" " there")))',
-    # '(method main () (print (> "zi" "there")))',
-    # '(method main () (print (> 99 -100)))',
-    # '(method main () (print (> 99 true)))',
-    # '(method main () (print (== "99" "990")))',
-    # '(method main () (print (!= false false)))',
-    # '(method main () (print (! false)))',
     '(field myfield 92)',
     '(field strfild "helo")',
+    '(field myob null)',
+    # '(field strfild2 strfild)',
     '(field x 2)',
     # '(field strfild "helo")',
     # '(field myfield2 "strfild")',
@@ -374,10 +387,24 @@ program = [
     # '(print (/ 1000 9))',
     # '(print (% 1000 9))',
     # '(print myfield)',
-    '(set myfield 1000)',
-    '(set strfild (new other))',
+    # '(set myfield 1000)',
+    # '(set strfild (new other))',
+    # '(print (!= strfild null))',
+    # '(print (== myob null))',
+    # '(print (== null null))',
+    # '(print (== strfild strfild))',
+    # '(set myob (new other))',
+    # '(print (!= myob strfild))',
+    # '(print strfild)',
+    # '(print (+ 99 80))',
+    # '(print (+ "hi" " there"))',
+    # '(print (> "zi" "there"))',
+    # '(print (> 99 -100))',
+    # '(print (== "99" "990"))',
+    # '(print (!= false false))',
+    # '(print (! false))',
     # '(print myfield)',
-    # '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "h")) )',
+    '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "h")) )',
     '(print (* myfield 2))',
     # '(print null)',
     # '(print myfield2)',
