@@ -152,9 +152,8 @@ class Statement():
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(self.params[0], vars, base)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
-                    base.error(ErrorType.TYPE_ERROR)
-                    # base.error(
-                    #     ErrorType.TYPE_ERROR, "non-boolean if condition")
+                    base.error(ErrorType.TYPE_ERROR,
+                               "non-boolean if condition")
 
                 if condition.value is True:
                     Statement(self.params[1][0],
@@ -232,14 +231,16 @@ class Statement():
                         return Value('"{}"'.format(lhs.value + rhs.value),
                                      vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Can only add two ints or two strings")
                 case '-' | '*' | '/' | '%':
                     lhs = self.__run_expression(expr[1], vars, base)
                     rhs = self.__run_expression(expr[2], vars, base)
 
                     if not (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Must perform this operation on two ints")
 
                     return Value(str(int(
                         eval(str(lhs.value) +
@@ -260,7 +261,10 @@ class Statement():
                                                 operator, rhs.value))).lower(),
                                      vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(
+                            ErrorType.TYPE_ERROR,
+                            "Must perform this operation\
+                            on two ints or two strings")
                 case '==' | '!=':
                     # TODO: should be able to compare null and object
                     lhs = self.__run_expression(expr[1], vars, base)
@@ -281,7 +285,8 @@ class Statement():
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(), vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Incompatible types for equality operation")
                 case '&' | '|':
                     lhs = self.__run_expression(expr[1], vars, base)
                     rhs = self.__run_expression(expr[2], vars, base)
@@ -291,13 +296,15 @@ class Statement():
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(), vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Both operands must be booleans")
                 case '!':
                     lhs = self.__run_expression(expr[1], vars, base)
                     if lhs.value_type == InterpreterBase.BOOL_DEF:
                         return Value(str(not lhs.value).lower(), vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Can only perform `not` on a boolean")
 
         else:
             return Value(expr, vars)
@@ -352,7 +359,7 @@ program = [
     '             ) ',
     '           )',
 
-    # '(inputi myfield)',
+    # '(print (! true) )',
     # '(print (+ myfield 5))',
     '(print "end")))',
     ')'
