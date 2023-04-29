@@ -32,27 +32,30 @@ class Interpreter(InterpreterBase):
                     return
             self.classes.append(Class(class_name, fields, methods))
 
-        self.__get_class(super().MAIN_CLASS_DEF).run_method(
+        self.get_class(super().MAIN_CLASS_DEF).run_method(
             super().MAIN_FUNC_DEF)
 
-    def __get_class(self, class_name):
+    def get_class(self, class_name):
         for class_def in self.classes:
             if class_def.name == class_name:
                 return class_def
 
         return None
 
+    def __str__(self):
+        return str([str(x) for x in self.classes])
+
 
 class Class():
-    def __init__(self, name, fields, methods):
+    def __init__(self, name='', fields=[], methods=[]):
         self.name = name
         self.fields = fields
         self.methods = methods
 
     def run_method(self, method_name):
-        self.__get_method(method_name).run()
+        self.get_method(method_name).run(self.fields)
 
-    def __get_method(self, method_name):
+    def get_method(self, method_name):
         for method in self.methods:
             if method.name == method_name:
                 return method
@@ -105,7 +108,8 @@ class Method():
         self.params = params
         self.statement = statement
 
-    def run(self):
+    def run(self, fields):
+        print(fields)
         self.statement.run()
 
     def __str__(self):
@@ -120,8 +124,8 @@ class Statement():
     def run(self):
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
-                print('TODO')
-                print(self.params)
+                for statement in self.params:
+                    Statement(statement[0], statement[1:]).run()
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
@@ -220,6 +224,12 @@ class Statement():
                                               str(rhs.value))).lower())
                     else:
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                case '!':
+                    lhs = self.__run_expression(expr[1])
+                    if lhs.value_type == InterpreterBase.BOOL_DEF:
+                        return Value(str(not lhs.value).lower())
+                    else:
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
 
         else:
             return Value(expr)
@@ -246,7 +256,14 @@ program = [
     # '(method main () (print (> 99 true)))',
     # '(method main () (print (== "99" "990")))',
     # '(method main () (print (!= false false)))',
-    '(method main () (print (& 1 true)))',
+    # '(method main () (print (! false)))',
+    '(field myfield 9)',
+    '(method main () (begin',
+    '(print "YO")',
+    # '(print myfield)',
+    '(print (+ 9 9))',
+    '(begin (print "INNER") (print "AGAIN"))',
+    '(print "HI")))',
     # '(method main () (print (== 991 991)))',
     # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',  # 28
     # '(method main () (print (+ 1 (* (- 99 "hi") (/ 900 100)))))',
@@ -265,6 +282,7 @@ interpreter = Interpreter()
 interpreter.run(program)
 
 # print(Value('null'))
+
 
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
