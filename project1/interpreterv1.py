@@ -12,7 +12,7 @@ class Interpreter(InterpreterBase):
             super().error(ErrorType.SYNTAX_ERROR)
             return
 
-        self.classes = []
+        self.classes = {}
         for class_def in parsed_program:
             if class_def[0] != InterpreterBase.CLASS_DEF:
                 super().error(ErrorType.SYNTAX_ERROR)
@@ -40,17 +40,17 @@ class Interpreter(InterpreterBase):
                 else:
                     super().error(ErrorType.SYNTAX_ERROR)
                     return
-            self.classes.append(Class(class_name, fields, methods))
+
+            if class_name in self.classes:
+                super().error(ErrorType.NAME_ERROR,
+                              "Duplicate class {}".format(class_name))
+            self.classes[class_name] = Class(class_name, fields, methods)
 
         self.get_class(super().MAIN_CLASS_DEF).run_method(
             super().MAIN_FUNC_DEF)
 
     def get_class(self, class_name):
-        for class_def in self.classes:
-            if class_def.name == class_name:
-                return class_def
-
-        return None
+        return self.classes[class_name]
 
     def __str__(self):
         return str([str(x) for x in self.classes])
@@ -66,12 +66,7 @@ class Class():
         self.get_method(method_name).run(self.fields)
 
     def get_method(self, method_name):
-        # for method in self.methods:
-        #     if method.name == method_name:
-        #         return method
         return self.methods[method_name]
-
-        return None
 
     def __str__(self):
         return (self.name + ' ' + str([str(x) for x in self.fields]) + ' ' +
@@ -152,7 +147,23 @@ class Statement():
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
-                print('TODO')
+                condition = self.__run_expression(self.params[0], vars)
+                if condition.value_type != InterpreterBase.BOOL_DEF:
+                    InterpreterBase(self).error(
+                        ErrorType.TYPE_ERROR, "non-boolean if condition")
+
+                if condition.value is True:
+                    Statement(self.params[1][0], self.params[1][1:]).run(vars)
+                else:
+                    if len(self.params) < 3:
+                        return
+                    elif len(self.params) == 3:
+                        Statement(self.params[2][0],
+                                  self.params[2][1:]).run(vars)
+                    else:
+                        InterpreterBase(self).error(
+                            ErrorType.SYNTAX_ERROR, "Too many `if` branches")
+
             case InterpreterBase.INPUT_INT_DEF:
                 print('TODO')
             case InterpreterBase.INPUT_STRING_DEF:
@@ -294,18 +305,11 @@ program = [
     '(print myfield)',
     '(set myfield 1000)',
     '(print myfield)',
+    '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
     '(print (* myfield 2))',
     # '(print myfield2)',
     '(begin (print "INNER") (print "AGAIN"))',
     '(print "HI")))',
-    # '(method main () (print (== 991 991)))',
-    # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',  # 28
-    # '(method main () (print (+ 1 (* (- 99 "hi") (/ 900 100)))))',
-    # '(method main () (print "hello world"))',
-    # '    (method main () (begin',
-    # '        (set guy (new other))',
-    # '        (call guy hi)',
-    # '    ))',
     ')'
 
 
@@ -315,8 +319,7 @@ program = [
 interpreter = Interpreter()
 interpreter.run(program)
 
-# print(Value('null'))
-
+# print(1 is True)
 
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
