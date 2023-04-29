@@ -109,9 +109,15 @@ class Value():
                     InterpreterBase(self).error(ErrorType.SYNTAX_ERROR)
 
                 # assign value from given variable list
-                # print(fields[value].value)
-                self.value = fields[value].value.value
-                self.value_type = fields[value].value.value_type
+                try:
+                    self.value = fields[value].value.value
+                    self.value_type = fields[value].value.value_type
+                except KeyError:
+                    # var doesn't exist
+                    InterpreterBase(self).error(ErrorType.NAME_ERROR)
+                except TypeError:
+                    # cannot initialize var with other var!
+                    InterpreterBase(self).error(ErrorType.TYPE_ERROR)
 
     def __str__(self):
         return self.value_type + ' ' + str(self.value)
@@ -273,6 +279,7 @@ program = [
     # '(method main () (print (! false)))',
     '(field myfield 92)',
     '(field strfild "helo")',
+    # '(field strfild2 strfild)',
     '(method main () (begin',
     '(print (+ strfild " ther"))',
     '(print myfield)',
@@ -284,6 +291,7 @@ program = [
     '(set myfield 1000)',
     '(print myfield)',
     '(print (* myfield 2))',
+    '(print myfield2)',
     '(begin (print "INNER") (print "AGAIN"))',
     '(print "HI")))',
     # '(method main () (print (== 991 991)))',
