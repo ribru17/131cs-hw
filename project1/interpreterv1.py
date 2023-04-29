@@ -200,13 +200,27 @@ class Statement():
                         return Value(str(eval(
                             '"{}"{}"{}"'.format(lhs.value,
                                                 operator, rhs.value))).lower())
-                    # elif isinstance(lhs.value, None) and isinstance(rhs.value, str):
-                    #     return Value(eval('"{}"{}"{}"'.format(lhs.value, operator, rhs.value)))
                     elif (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
-                        return Value(str(eval(str(lhs.value) + operator + str(rhs.value))).lower())
+                        return Value(str(eval(str(lhs.value) + operator +
+                                              str(rhs.value))).lower())
+                    elif (lhs.value_type == InterpreterBase.BOOL_DEF and
+                            rhs.value_type == InterpreterBase.BOOL_DEF):
+                        return Value(str(eval(str(lhs.value) + operator +
+                                              str(rhs.value))).lower())
                     else:
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                case '&' | '|':
+                    lhs = self.__run_expression(expr[1])
+                    rhs = self.__run_expression(expr[2])
+
+                    if (lhs.value_type == InterpreterBase.BOOL_DEF and
+                            rhs.value_type == InterpreterBase.BOOL_DEF):
+                        return Value(str(eval(str(lhs.value) + operator +
+                                              str(rhs.value))).lower())
+                    else:
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+
         else:
             return Value(expr)
 
@@ -231,7 +245,9 @@ program = [
     # '(method main () (print (> 99 -100)))',
     # '(method main () (print (> 99 true)))',
     # '(method main () (print (== "99" "990")))',
-    '(method main () (print (!= 991 991)))',
+    # '(method main () (print (!= false false)))',
+    '(method main () (print (& 1 true)))',
+    # '(method main () (print (== 991 991)))',
     # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',  # 28
     # '(method main () (print (+ 1 (* (- 99 "hi") (/ 900 100)))))',
     # '(method main () (print "hello world"))',
