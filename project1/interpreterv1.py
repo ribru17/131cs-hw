@@ -149,16 +149,33 @@ class Statement():
         if isinstance(expr, list):
             operator = expr[0]
             match operator:
-                case '+' | '-' | '*' | '/' | '%':
+                case '+':
+                    lhs = self.__run_expression(expr[1])
+                    rhs = self.__run_expression(expr[2])
+
+                    if ((type(lhs) is int and type(rhs) is int) or
+                            (isinstance(lhs, str) and isinstance(rhs, str))):
+                        return lhs + rhs
+                    else:
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                case '-' | '*' | '/' | '%':
+                    lhs = self.__run_expression(expr[1])
+                    rhs = self.__run_expression(expr[2])
+
+                    if not (type(lhs) is int and type(rhs) is int):
+                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+
                     return int(eval(str(self.__run_expression(expr[1])) +
                                     operator +
                                     str(self.__run_expression(expr[2]))))
                 case '<' | '<=' | '>' | '>=' | '==' | '!=':
-                    lhs = str(self.__run_expression(expr[1]))
-                    rhs = str(self.__run_expression(expr[2]))
-                    if ((isinstance(lhs, int) and isinstance(rhs, int)) or
-                            (isinstance(lhs, str) and isinstance(rhs, str))):
+                    lhs = self.__run_expression(expr[1])
+                    rhs = self.__run_expression(expr[2])
+
+                    if type(lhs) is int and type(rhs) is int:
                         return eval(lhs + operator + rhs)
+                    elif (isinstance(lhs, str) and isinstance(rhs, str)):
+                        return eval('"{}"{}"{}"'.format(lhs, operator, rhs))
                     else:
                         InterpreterBase(self).error(ErrorType.TYPE_ERROR)
         else:
@@ -179,7 +196,7 @@ program = [
     '))',
     ')',
     '(class main',
-    '(method main () (print (!= 9 9)))',
+    '(method main () (print (- 48 0)))',
     # '(method main () (print (+ 1 (* (- 99 96) (/ 900 100)))))',
     # '(method main () (print "hello world"))',
     # '    (method main () (begin',
@@ -193,12 +210,9 @@ program = [
 interpreter = Interpreter()
 interpreter.run(program)
 
+# print(str("'hi'"))
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
-print('zzz' > 'aaaa')
-print('aaab' > 'aaaa')
-print('aaaa' > 'aaa')
-print('hi' + ' there')
 
 # try:
 #     print(int('1b23'))
