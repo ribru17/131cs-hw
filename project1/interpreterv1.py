@@ -18,22 +18,25 @@ class Interpreter(InterpreterBase):
                 super().error(ErrorType.SYNTAX_ERROR)
                 return
             class_name = class_def[1]
-            # fields = []
-            # methods = []
+
+            # populate fields and classes
             fields = {}
             methods = {}
             for item in class_def[2:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
-                    # fields.append(Variable(item[1], item[2]))
+                    if item[1] in fields:
+                        super().error(ErrorType.NAME_ERROR,
+                                      "Duplicate field {}".format(item[1]))
+
                     fields[item[1]] = Variable(item[1], item[2])
                 elif item[0] == InterpreterBase.METHOD_DEF:
-                    # methods.append(
-                    #     Method(item[1], item[2],
-                    #            Statement(item[3][0], item[3][1:])))
+                    if item[1] in methods:
+                        super().error(ErrorType.NAME_ERROR,
+                                      "Duplicate method {}".format(item[1]))
+
                     methods[item[1]] = Method(item[1], item[2],
                                               Statement(item[3][0],
                                                         item[3][1:]))
-
                 else:
                     super().error(ErrorType.SYNTAX_ERROR)
                     return
@@ -279,7 +282,8 @@ program = [
     # '(method main () (print (! false)))',
     '(field myfield 92)',
     '(field strfild "helo")',
-    # '(field strfild2 strfild)',
+    # '(field strfild "helo")',
+    # '(field myfield2 "strfild")',
     '(method main () (begin',
     '(print (+ strfild " ther"))',
     '(print myfield)',
@@ -291,7 +295,7 @@ program = [
     '(set myfield 1000)',
     '(print myfield)',
     '(print (* myfield 2))',
-    '(print myfield2)',
+    # '(print myfield2)',
     '(begin (print "INNER") (print "AGAIN"))',
     '(print "HI")))',
     # '(method main () (print (== 991 991)))',
