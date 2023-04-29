@@ -165,9 +165,11 @@ class Statement():
                             ErrorType.SYNTAX_ERROR, "Too many `if` branches")
 
             case InterpreterBase.INPUT_INT_DEF:
-                print('TODO')
+                input = InterpreterBase(self).get_input()
+                vars[self.params[0]].value = Value(input, vars)
             case InterpreterBase.INPUT_STRING_DEF:
-                print('TODO')
+                input = InterpreterBase(self).get_input()
+                vars[self.params[0]].value = Value('"{}"'.format(input), vars)
             case InterpreterBase.PRINT_DEF:
                 value = self.__run_expression(self.params[0], vars)
                 if value.value_type == InterpreterBase.BOOL_DEF:
@@ -309,7 +311,11 @@ program = [
     '(print (* myfield 2))',
     # '(print myfield2)',
     '(begin (print "INNER") (print "AGAIN"))',
-    '(print "HI")))',
+    '(inputs myfield)',
+    '(print (+ myfield "5"))',
+    # '(inputi myfield)',
+    # '(print (+ myfield 5))',
+    '(print "end")))',
     ')'
 
 
