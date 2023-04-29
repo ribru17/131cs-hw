@@ -1,5 +1,6 @@
 from intbase import InterpreterBase, ErrorType
 from bparser import BParser
+from copy import deepcopy
 
 
 class Interpreter(InterpreterBase):
@@ -49,11 +50,15 @@ class Interpreter(InterpreterBase):
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
-        self.get_class(super().MAIN_CLASS_DEF).run_method(
+        self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
             super().MAIN_FUNC_DEF, super())
 
     def get_class(self, class_name):
-        return self.classes[class_name]
+        try:
+            return self.classes[class_name]
+        except KeyError:
+            super().error(ErrorType.TYPE_ERROR,
+                          "Unknown class {}".format(class_name))
 
     def __str__(self):
         return str([str(x) for x in self.classes])
@@ -65,15 +70,34 @@ class Class():
         self.fields = fields
         self.methods = methods
 
+    def instantiate(self):
+        return ClassInstance(self.name, self.fields, self.methods)
+
+    def __str__(self):
+        return (self.name + ' ' + str({'{}:{}'.format(key, val.value) for
+                                       (key, val) in self.fields.items()}) +
+                ' ' + str({'{}:{}'.format(key, val) for (key, val)
+                           in self.methods.items()}))
+
+
+class ClassInstance():
+    def __init__(self, name, fields, methods):
+        self.name = deepcopy(name)
+        self.fields = deepcopy(fields)
+        self.methods = deepcopy(methods)
+
     def run_method(self, method_name, base):
-        self.get_method(method_name).run(self.fields, base)
+        try:
+            self.get_method(method_name).run(self.fields, base)
+        except KeyError:
+            base.error(ErrorType.NAME_ERROR,
+                       "Unknown method {}".format(method_name))
 
     def get_method(self, method_name):
         return self.methods[method_name]
 
     def __str__(self):
-        return (self.name + ' ' + str([str(x) for x in self.fields]) + ' ' +
-                str([str(x) for x in self.methods]))
+        return 'Class instance of ' + self.name
 
 
 class Variable():
@@ -101,6 +125,7 @@ class Value():
         elif value[0] == value[-1] == '"':
             self.value_type = InterpreterBase.STRING_DEF
             self.value = value.strip('"')
+            # TODO: add case for instantiated class
         else:
             try:
                 self.value = int(value)
@@ -200,6 +225,7 @@ class Statement():
             case InterpreterBase.RETURN_DEF:
                 print('TODO')
             case InterpreterBase.SET_DEF:
+                # print(self.params)
                 vars[self.params[0]].value = self.__run_expression(
                     self.params[1], vars, base)
             case InterpreterBase.WHILE_DEF:
@@ -212,8 +238,9 @@ class Statement():
                               self.params[1][1:]).run(vars, base)
                     condition = self.__run_expression(
                         self.params[0], vars, base)
-            case _:
-                base.error(ErrorType.SYNTAX_ERROR)
+            case other:
+                base.error(ErrorType.SYNTAX_ERROR,
+                           "Unknown statement {}".format(other))
 
     def __run_expression(self, expr, vars, base):
         if isinstance(expr, list):
@@ -305,6 +332,12 @@ class Statement():
                     else:
                         base.error(ErrorType.TYPE_ERROR,
                                    "Can only perform `not` on a boolean")
+                case InterpreterBase.NEW_DEF:
+                    # class_name = expr[1]
+                    return Value('1', vars)
+                case other:
+                    base.error(ErrorType.SYNTAX_ERROR,
+                               "Unknown operator {}".format(other))
 
         else:
             return Value(expr, vars)
@@ -330,22 +363,23 @@ program = [
     # '(method main () (print (! false)))',
     '(field myfield 92)',
     '(field strfild "helo")',
-    '(field x 100)',
+    '(field x 2)',
     # '(field strfild "helo")',
     # '(field myfield2 "strfild")',
     '(method main () (begin',
-    '(print (+ strfild " ther"))',
-    '(print myfield)',
-    '(print (+ 9 9))',
-    '(print (/ myfield 9))',
-    '(print (/ 1000 9))',
-    '(print (% 1000 9))',
-    '(print myfield)',
+    # '(print (+ strfild " ther"))',
+    # '(print myfield)',
+    # '(print (+ 9 9))',
+    # '(print (/ myfield 9))',
+    # '(print (/ 1000 9))',
+    # '(print (% 1000 9))',
+    # '(print myfield)',
     '(set myfield 1000)',
-    '(print myfield)',
-    # '(if (+ 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
-    '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
+    '(set strfild (new other))',
+    # '(print myfield)',
+    # '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "h")) )',
     '(print (* myfield 2))',
+    # '(print null)',
     # '(print myfield2)',
     # '(begin (print "INNER") (print "AGAIN"))',
     # '(inputs myfield)',
