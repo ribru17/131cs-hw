@@ -166,25 +166,46 @@ class Statement():
 
             case InterpreterBase.INPUT_INT_DEF:
                 input = InterpreterBase(self).get_input()
-                vars[self.params[0]].value = Value(input, vars)
+                try:
+                    vars[self.params[0]].value = Value(input, vars)
+                except KeyError:
+                    InterpreterBase(self).error(
+                        ErrorType.NAME_ERROR,
+                        "Unknown variable {}".format(self.params[0]))
             case InterpreterBase.INPUT_STRING_DEF:
                 input = InterpreterBase(self).get_input()
-                vars[self.params[0]].value = Value('"{}"'.format(input), vars)
+                try:
+                    vars[self.params[0]].value = Value(
+                        '"{}"'.format(input), vars)
+                except KeyError:
+                    InterpreterBase(self).error(
+                        ErrorType.NAME_ERROR,
+                        "Unknown variable {}".format(self.params[0]))
             case InterpreterBase.PRINT_DEF:
-                value = self.__run_expression(self.params[0], vars)
-                if value.value_type == InterpreterBase.BOOL_DEF:
-                    value = (InterpreterBase.TRUE_DEF if value.value
-                             else InterpreterBase.FALSE_DEF)
-                else:
-                    value = value.value
-                InterpreterBase(self).output(value)
+                out_string = ''
+                for param in self.params:
+                    value = self.__run_expression(param, vars)
+                    if value.value_type == InterpreterBase.BOOL_DEF:
+                        value = (InterpreterBase.TRUE_DEF if value.value
+                                 else InterpreterBase.FALSE_DEF)
+                    else:
+                        value = value.value
+                    out_string += str(value)
+
+                InterpreterBase(self).output(out_string)
             case InterpreterBase.RETURN_DEF:
                 print('TODO')
             case InterpreterBase.SET_DEF:
                 vars[self.params[0]].value = self.__run_expression(
                     self.params[1], vars)
             case InterpreterBase.WHILE_DEF:
-                print('TODO')
+                condition = self.__run_expression(self.params[0], vars)
+                if condition.value_type != InterpreterBase.BOOL_DEF:
+                    InterpreterBase(self).error(
+                        ErrorType.TYPE_ERROR, "Non-boolean while condition")
+                while condition.value is True:
+                    Statement(self.params[1][0], self.params[1][1:]).run(vars)
+                    condition = self.__run_expression(self.params[0], vars)
             case _:
                 InterpreterBase(self).error(ErrorType.SYNTAX_ERROR)
 
@@ -295,6 +316,7 @@ program = [
     # '(method main () (print (! false)))',
     '(field myfield 92)',
     '(field strfild "helo")',
+    '(field x 100)',
     # '(field strfild "helo")',
     # '(field myfield2 "strfild")',
     '(method main () (begin',
@@ -310,9 +332,18 @@ program = [
     '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
     '(print (* myfield 2))',
     # '(print myfield2)',
-    '(begin (print "INNER") (print "AGAIN"))',
-    '(inputs myfield)',
-    '(print (+ myfield "5"))',
+    # '(begin (print "INNER") (print "AGAIN"))',
+    # '(inputs myfield)',
+    # '(print (+ myfield "5"))',
+    # '           (inputi x)	 ',
+    '           (while (> x 0) ',
+    '             (begin',
+    # '               (print x)',
+    '               (print "x is " x " " true " that")',
+    '               (set x (/ x 2))',
+    '             ) ',
+    '           )',
+
     # '(inputi myfield)',
     # '(print (+ myfield 5))',
     '(print "end")))',
