@@ -6,6 +6,9 @@ class Interpreter(InterpreterBase):
     def __init__(self, console_output=True, inp=None, trace_output=False):
         super().__init__(console_output, inp)
 
+    def throw_err(type):
+        super().error(type)
+
     def run(self, program):
         result, parsed_program = BParser.parse(program)
         if result is False:
@@ -47,7 +50,7 @@ class Interpreter(InterpreterBase):
             self.classes[class_name] = Class(class_name, fields, methods)
 
         self.get_class(super().MAIN_CLASS_DEF).run_method(
-            super().MAIN_FUNC_DEF)
+            super().MAIN_FUNC_DEF, super())
 
     def get_class(self, class_name):
         return self.classes[class_name]
@@ -62,8 +65,8 @@ class Class():
         self.fields = fields
         self.methods = methods
 
-    def run_method(self, method_name):
-        self.get_method(method_name).run(self.fields)
+    def run_method(self, method_name, base):
+        self.get_method(method_name).run(self.fields, base)
 
     def get_method(self, method_name):
         return self.methods[method_name]
@@ -127,8 +130,8 @@ class Method():
         self.params = params
         self.statement = statement
 
-    def run(self, fields):
-        self.statement.run(fields)
+    def run(self, fields, base):
+        self.statement.run(fields, base)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -139,52 +142,54 @@ class Statement():
         self.statement_type = statement_type
         self.params = params
 
-    def run(self, vars):
+    def run(self, vars, base):
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
-                    Statement(statement[0], statement[1:]).run(vars)
+                    Statement(statement[0], statement[1:]).run(vars, base)
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
-                condition = self.__run_expression(self.params[0], vars)
+                condition = self.__run_expression(self.params[0], vars, base)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
-                    InterpreterBase(self).error(
-                        ErrorType.TYPE_ERROR, "non-boolean if condition")
+                    base.error(ErrorType.TYPE_ERROR)
+                    # base.error(
+                    #     ErrorType.TYPE_ERROR, "non-boolean if condition")
 
                 if condition.value is True:
-                    Statement(self.params[1][0], self.params[1][1:]).run(vars)
+                    Statement(self.params[1][0],
+                              self.params[1][1:]).run(vars, base)
                 else:
                     if len(self.params) < 3:
                         return
                     elif len(self.params) == 3:
                         Statement(self.params[2][0],
-                                  self.params[2][1:]).run(vars)
+                                  self.params[2][1:]).run(vars, base)
                     else:
-                        InterpreterBase(self).error(
+                        base.error(
                             ErrorType.SYNTAX_ERROR, "Too many `if` branches")
 
             case InterpreterBase.INPUT_INT_DEF:
-                input = InterpreterBase(self).get_input()
+                input = base.get_input()
                 try:
                     vars[self.params[0]].value = Value(input, vars)
                 except KeyError:
-                    InterpreterBase(self).error(
+                    base.error(
                         ErrorType.NAME_ERROR,
                         "Unknown variable {}".format(self.params[0]))
             case InterpreterBase.INPUT_STRING_DEF:
-                input = InterpreterBase(self).get_input()
+                input = base.get_input()
                 try:
                     vars[self.params[0]].value = Value(
                         '"{}"'.format(input), vars)
                 except KeyError:
-                    InterpreterBase(self).error(
+                    base.error(
                         ErrorType.NAME_ERROR,
                         "Unknown variable {}".format(self.params[0]))
             case InterpreterBase.PRINT_DEF:
                 out_string = ''
                 for param in self.params:
-                    value = self.__run_expression(param, vars)
+                    value = self.__run_expression(param, vars, base)
                     if value.value_type == InterpreterBase.BOOL_DEF:
                         value = (InterpreterBase.TRUE_DEF if value.value
                                  else InterpreterBase.FALSE_DEF)
@@ -192,30 +197,32 @@ class Statement():
                         value = value.value
                     out_string += str(value)
 
-                InterpreterBase(self).output(out_string)
+                base.output(out_string)
             case InterpreterBase.RETURN_DEF:
                 print('TODO')
             case InterpreterBase.SET_DEF:
                 vars[self.params[0]].value = self.__run_expression(
-                    self.params[1], vars)
+                    self.params[1], vars, base)
             case InterpreterBase.WHILE_DEF:
-                condition = self.__run_expression(self.params[0], vars)
+                condition = self.__run_expression(self.params[0], vars, base)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
-                    InterpreterBase(self).error(
+                    base.error(
                         ErrorType.TYPE_ERROR, "Non-boolean while condition")
                 while condition.value is True:
-                    Statement(self.params[1][0], self.params[1][1:]).run(vars)
-                    condition = self.__run_expression(self.params[0], vars)
+                    Statement(self.params[1][0],
+                              self.params[1][1:]).run(vars, base)
+                    condition = self.__run_expression(
+                        self.params[0], vars, base)
             case _:
-                InterpreterBase(self).error(ErrorType.SYNTAX_ERROR)
+                base.error(ErrorType.SYNTAX_ERROR)
 
-    def __run_expression(self, expr, vars):
+    def __run_expression(self, expr, vars, base):
         if isinstance(expr, list):
             operator = expr[0]
             match operator:
                 case '+':
-                    lhs = self.__run_expression(expr[1], vars)
-                    rhs = self.__run_expression(expr[2], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
+                    rhs = self.__run_expression(expr[2], vars, base)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
@@ -225,22 +232,22 @@ class Statement():
                         return Value('"{}"'.format(lhs.value + rhs.value),
                                      vars)
                     else:
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
                 case '-' | '*' | '/' | '%':
-                    lhs = self.__run_expression(expr[1], vars)
-                    rhs = self.__run_expression(expr[2], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
+                    rhs = self.__run_expression(expr[2], vars, base)
 
                     if not (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
 
                     return Value(str(int(
                         eval(str(lhs.value) +
                              operator +
                              str(rhs.value)))), vars)
                 case '<' | '<=' | '>' | '>=':
-                    lhs = self.__run_expression(expr[1], vars)
-                    rhs = self.__run_expression(expr[2], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
+                    rhs = self.__run_expression(expr[2], vars, base)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
@@ -253,11 +260,11 @@ class Statement():
                                                 operator, rhs.value))).lower(),
                                      vars)
                     else:
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
                 case '==' | '!=':
                     # TODO: should be able to compare null and object
-                    lhs = self.__run_expression(expr[1], vars)
-                    rhs = self.__run_expression(expr[2], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
+                    rhs = self.__run_expression(expr[2], vars, base)
 
                     if (lhs.value_type == InterpreterBase.STRING_DEF and
                             rhs.value_type == InterpreterBase.STRING_DEF):
@@ -274,23 +281,23 @@ class Statement():
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(), vars)
                     else:
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
                 case '&' | '|':
-                    lhs = self.__run_expression(expr[1], vars)
-                    rhs = self.__run_expression(expr[2], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
+                    rhs = self.__run_expression(expr[2], vars, base)
 
                     if (lhs.value_type == InterpreterBase.BOOL_DEF and
                             rhs.value_type == InterpreterBase.BOOL_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(), vars)
                     else:
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
                 case '!':
-                    lhs = self.__run_expression(expr[1], vars)
+                    lhs = self.__run_expression(expr[1], vars, base)
                     if lhs.value_type == InterpreterBase.BOOL_DEF:
                         return Value(str(not lhs.value).lower(), vars)
                     else:
-                        InterpreterBase(self).error(ErrorType.TYPE_ERROR)
+                        base.error(ErrorType.TYPE_ERROR)
 
         else:
             return Value(expr, vars)
@@ -329,6 +336,7 @@ program = [
     '(print myfield)',
     '(set myfield 1000)',
     '(print myfield)',
+    # '(if (+ 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
     '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "hmm")) )',
     '(print (* myfield 2))',
     # '(print myfield2)',
@@ -360,10 +368,3 @@ interpreter.run(program)
 
 # success, parsed_program = BParser.parse(program)
 # print(parsed_program)
-
-# try:
-#     print(int('1b23'))
-# except ValueError:
-#     print('bad')
-# mydict = {}
-# print(mydict['hello'] or 'not here')
