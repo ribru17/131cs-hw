@@ -166,7 +166,7 @@ class Method():
         scope = fields | {k: Variable(k, v, base) for (
             k, v) in list(zip(self.params, params))}
 
-        return self.statement.run(scope, base, intr, me)
+        return self.statement.run(scope, base, intr, me)[0]
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -181,10 +181,13 @@ class Statement():
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
-                    result = Statement(statement[0], statement[1:]).run(
+                    result, returned = Statement(statement[0],
+                                                 statement[1:]).run(
                         vars, base, intr, me)
-                    if statement[0] == InterpreterBase.RETURN_DEF:
-                        return result
+                    if returned is not None:
+                        return result, returned
+
+                return Value(InterpreterBase.NULL_DEF, vars, base), None
             case InterpreterBase.CALL_DEF:
                 if self.params[0] == InterpreterBase.ME_DEF:
                     me.run_method(
@@ -198,6 +201,7 @@ class Statement():
                             x, vars, base, intr, me)
                             for x in self.params[2:]],
                         base, intr)
+                return Value(InterpreterBase.NULL_DEF, vars, base), None
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(
                     self.params[0], vars, base, intr, me)
@@ -211,7 +215,8 @@ class Statement():
                         vars, base, intr, me)
                 else:
                     if len(self.params) < 3:
-                        return Value(InterpreterBase.NULL_DEF, vars, base)
+                        return Value(InterpreterBase.NULL_DEF,
+                                     vars, base), None
                     elif len(self.params) == 3:
                         return Statement(self.params[2][0],
                                          self.params[2][1:]).run(
@@ -224,6 +229,7 @@ class Statement():
                 input = base.get_input()
                 try:
                     vars[self.params[0]].value = Value(input, vars, base)
+                    return Value(InterpreterBase.NULL_DEF, vars, base), None
                 except KeyError:
                     base.error(
                         ErrorType.NAME_ERROR,
@@ -233,6 +239,7 @@ class Statement():
                 try:
                     vars[self.params[0]].value = Value(
                         '"{}"'.format(input), vars, base)
+                    return Value(InterpreterBase.NULL_DEF, vars, base), None
                 except KeyError:
                     base.error(
                         ErrorType.NAME_ERROR,
@@ -249,18 +256,20 @@ class Statement():
                     out_string += str(value)
 
                 base.output(out_string)
-                return Value(InterpreterBase.NULL_DEF, vars, base)
+                return Value(InterpreterBase.NULL_DEF, vars, base), None
             case InterpreterBase.RETURN_DEF:
                 if len(self.params) == 0:
-                    return Value(InterpreterBase.NULL_DEF, vars, base)
+                    return Value(InterpreterBase.NULL_DEF,
+                                 vars, base), InterpreterBase.RETURN_DEF
 
                 return self.__run_expression(self.params[0],
-                                             vars, base, intr, me)
+                                             vars, base, intr,
+                                             me), InterpreterBase.RETURN_DEF
             case InterpreterBase.SET_DEF:
                 try:
                     vars[self.params[0]].value = self.__run_expression(
                         self.params[1], vars, base, intr, me)
-                    return Value(InterpreterBase.NULL_DEF, vars, base)
+                    return Value(InterpreterBase.NULL_DEF, vars, base), None
                 except KeyError:
                     base.error(ErrorType.NAME_ERROR,
                                "Unknown variable {}".format(self.params[0]))
@@ -271,10 +280,15 @@ class Statement():
                     base.error(
                         ErrorType.TYPE_ERROR, "Non-boolean while condition")
                 while condition.value is True:
-                    Statement(self.params[1][0],
-                              self.params[1][1:]).run(vars, base, intr, me)
+                    for statement in self.params[1:]:
+                        result, returned = Statement(statement[0],
+                                                     statement[1:]).run(
+                            vars, base, intr, me)
+                        if returned is not None:
+                            return result, returned
                     condition = self.__run_expression(
                         self.params[0], vars, base, intr, me)
+                return Value(InterpreterBase.NULL_DEF, vars, base), None
             case other:
                 base.error(ErrorType.SYNTAX_ERROR,
                            "Unknown statement {}".format(other))
@@ -407,25 +421,25 @@ class Statement():
             return Value(expr, vars, base)
 
 
-program = [
-    '(class other',
-    '(field p 3)',
-    '(method meth (abs) (print abs))',
-    ')',
-    '(class main',
-    '(field x 5)',
-    '(field obj null)',
-    '(method recurse (x) (begin',
-    '(print x)',
-    '(if (> x 0) (call me recurse (- x 1)))',
-    '))'
-    '(method main () (begin',
-    '(set obj (new other))',
-    '(call obj meth (* 9 9))',
-    '(call me recurse (* x 3))',
-    '(print "end")',
-    ')))'
-]
+# program = [
+#     '(class other',
+#     '(field p 3)',
+#     '(method meth (abs) (print abs))',
+#     ')',
+#     '(class main',
+#     '(field x 5)',
+#     '(field obj null)',
+#     '(method recurse (x) (begin',
+#     '(print x)',
+#     '(if (> x 0) (call me recurse (- x 1)))',
+#     '))'
+#     '(method main () (begin',
+#     '(set obj (new other))',
+#     '(call obj meth (* 9 9))',
+#     '(call me recurse (* x 3))',
+#     '(print "end")',
+#     ')))'
+# ]
 
 # program = [
 #     '(class main',
@@ -439,20 +453,63 @@ program = [
 #     ')',
 # ]
 
+# program = [
+#     '(class main',
+#     '  (field l 0)'
+#     '  (method fact2 (n)',
+#     # '     (inputs l)',
+#     # '     (call me fact n)',
+#     '   (begin',
+#     '   (while (> n 0)',
+#     # '     (print "HI")',
+#     # '     (print "HI")',
+#     # '     (print "HI")',
+#     '     (print "YO")',
+#     '     (return 2)',
+#     '     (set n (- n 1))',
+#     '     (print "HI")',
+#     # '     (return 1)',
+#     # '     (return (* n (call me fact (- n 1))))',
+#     '   )',
+#     '     (return 1)',
+#     '   )',
+#     '  )',
+#     '  (method fact (n)',
+#     # '     (inputs l)',
+#     '     (print "HI")',
+#     # '   (begin',
+#     # '     (print "HI")',
+#     # '     (return 1)',
+#     # '     (return (* n (call me fact (- n 1))))',
+#     # '   )',
+#     '  )',
+#     '  (method main () (begin',
+#     '(print (call me fact2 5) )',
+#     # '(if (> 3 2) (return))',
+#     '(print "uh oh")',
+#     '))',
+#     ')',
+# ]
+
 program = [
     '(class main',
-    '  (field l 0)'
-    '  (method fact (n)',
-    '     (set l 9)',
-    # '     (print "HI")',
-    # '   (if (== n 1)',
-    # '     (return 1)',
-    # '     (return (* n (call me fact (- n 1))))',
-    # '   )',
-    '  )',
-    '  (method main () (print (call me fact 5)))',
-    ')',
+    '  (field num 0)',
+    '  (field result 1)',
+    '  (method main ()',
+    '    (begin',
+    '      (print "Enter a number: ")',
+    '      (set num 5)',
+    '      (print num " factorial is " (call me factorial num))))',
+    '',
+    '  (method factorial (n)',
+    '    (begin',
+    '      (set result 1)',
+    '      (while (> n 0)',
+    '        (begin',
+    '          (set result (* n result))',
+    '          (set n (- n 1))))',
+    '      (return result))))',
 ]
 
-interpreter = Interpreter()
-interpreter.run(program)
+# interpreter = Interpreter()
+# interpreter.run(program)
