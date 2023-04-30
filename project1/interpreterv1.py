@@ -43,7 +43,7 @@ class Interpreter(InterpreterBase):
                     return
 
             if class_name in self.classes:
-                super().error(ErrorType.NAME_ERROR,
+                super().error(ErrorType.TYPE_ERROR,
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
@@ -163,6 +163,9 @@ class Method():
         self.statement = statement
 
     def run(self, fields, params, base, intr, me):
+        if len(params) != len(self.params):
+            base.error(ErrorType.TYPE_ERROR,
+                       'Wrong number of arguments for {}'.format(self.name))
         scope = fields | {k: Variable(k, v, base) for (
             k, v) in list(zip(self.params, params))}
 
@@ -196,7 +199,11 @@ class Statement():
                             for x in self.params[2:]],
                         base, intr)
                 else:
-                    vars[self.params[0]].value.value.run_method(
+                    obj = vars[self.params[0]].value.value
+                    if isinstance(obj, type(None)):
+                        base.error(ErrorType.FAULT_ERROR,
+                                   "Tried to dereference null object")
+                    obj.run_method(
                         self.params[1], [self.__run_expression(
                             x, vars, base, intr, me)
                             for x in self.params[2:]],
@@ -408,6 +415,9 @@ class Statement():
                                 for x in expr[3:]],
                             base, intr)
                     else:
+                        if isinstance(vars[expr[1]].value.value, type(None)):
+                            base.error(ErrorType.FAULT_ERROR,
+                                       "Tried to dereference null object")
                         return vars[expr[1]].value.value.run_method(
                             expr[2], [self.__run_expression(
                                 x, vars, base, intr, me)
@@ -492,12 +502,26 @@ class Statement():
 # ]
 
 program = [
+    '(class other',
+    '(field p 3)',
+    '(method meth (abs) (print abs))',
+    ')',
     '(class main',
     '  (field num 0)',
     '  (field result 1)',
+    '  (field lig 4)',
+    '  (field obj null)',
+    '  (method printwrap (arg) (print "print wrapped" arg))',
     '  (method main ()',
     '    (begin',
     '      (print "Enter a number: ")',
+    # '      (print (call obj meth 4))',
+    '      (call me printwrap 7)',
+    '      (while (> lig 0)',
+    '        (set lig (- lig 1))',
+    '        (print 5 " ok " false null)',
+    '        (return 5)',
+    '      )',
     '      (set num 5)',
     '      (print num " factorial is " (call me factorial num))))',
     '',
