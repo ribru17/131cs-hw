@@ -438,3 +438,11 @@ class Statement():
 
         else:
             return Value(expr, vars, base)
+
+
+if __name__ == '__main__':
+    with open('program.txt') as program_file:
+        program = program_file.readlines()
+
+    interpreter = Interpreter()
+    interpreter.run(program)
