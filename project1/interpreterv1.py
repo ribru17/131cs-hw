@@ -200,11 +200,14 @@ class Statement():
                         base, intr)
                 else:
                     obj = self.__run_expression(self.params[0],
-                                                vars, base, intr, me).value
-                    if isinstance(obj, type(None)):
+                                                vars, base, intr, me)
+                    if isinstance(obj.value, type(None)):
                         base.error(ErrorType.FAULT_ERROR,
                                    "Tried to dereference null object")
-                    obj.run_method(
+                    if obj.value_type != InterpreterBase.CLASS_DEF:
+                        base.error(ErrorType.TYPE_ERROR,
+                                   "Can only call methods on class object")
+                    obj.value.run_method(
                         self.params[1], [self.__run_expression(
                             x, vars, base, intr, me)
                             for x in self.params[2:]],
@@ -417,11 +420,14 @@ class Statement():
                             base, intr)
                     else:
                         obj = self.__run_expression(
-                            expr[1], vars, base, intr, me).value
-                        if isinstance(obj, type(None)):
+                            expr[1], vars, base, intr, me)
+                        if isinstance(obj.value, type(None)):
                             base.error(ErrorType.FAULT_ERROR,
                                        "Tried to dereference null object")
-                        return obj.run_method(
+                        if obj.value_type != InterpreterBase.CLASS_DEF:
+                            base.error(ErrorType.TYPE_ERROR,
+                                       "Can only call methods on class object")
+                        return obj.value.run_method(
                             expr[2], [self.__run_expression(
                                 x, vars, base, intr, me)
                                 for x in expr[3:]],
@@ -521,6 +527,10 @@ program = [
     # '      (print (call obj meth 4))',
     '      (call me printwrap 7)',
     '      (call (new other) meth 7)',
+    '      (set obj (new other))',
+    # '      (print (call "null" meth 7))',
+    # '      (print (call "obj" meth 7))',
+    '      (call obj meth 7)',
     '      (print (call (new other) meth 7))',
     '      (while (> lig 0)',
     '        (set lig (- lig 1))',
