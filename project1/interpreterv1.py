@@ -199,11 +199,8 @@ class Statement():
                             for x in self.params[2:]],
                         base, intr)
                 else:
-                    if isinstance(self.params[0], list):
-                        obj = self.__run_expression(self.params[0],
-                                                    vars, base, intr, me).value
-                    else:
-                        obj = vars[self.params[0]].value.value
+                    obj = self.__run_expression(self.params[0],
+                                                vars, base, intr, me).value
                     if isinstance(obj, type(None)):
                         base.error(ErrorType.FAULT_ERROR,
                                    "Tried to dereference null object")
@@ -419,11 +416,8 @@ class Statement():
                                 for x in expr[3:]],
                             base, intr)
                     else:
-                        if isinstance(expr[1], list):
-                            obj = self.__run_expression(
-                                expr[1], vars, base, intr, me).value
-                        else:
-                            obj = vars[expr[1]].value.value
+                        obj = self.__run_expression(
+                            expr[1], vars, base, intr, me).value
                         if isinstance(obj, type(None)):
                             base.error(ErrorType.FAULT_ERROR,
                                        "Tried to dereference null object")
