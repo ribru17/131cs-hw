@@ -51,7 +51,7 @@ class Interpreter(InterpreterBase):
             self.classes[class_name] = Class(class_name, fields, methods)
 
         self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
-            super().MAIN_FUNC_DEF, super(), self)
+            super().MAIN_FUNC_DEF, [], super(), self)
 
     def get_class(self, class_name):
         try:
@@ -86,9 +86,10 @@ class ClassInstance():
         self.fields = deepcopy(fields)
         self.methods = deepcopy(methods)
 
-    def run_method(self, method_name, base, intr):
+    def run_method(self, method_name, params, base, intr):
         try:
-            return self.get_method(method_name).run(self.fields, base, intr)
+            return self.get_method(method_name).run(self.fields,
+                                                    params, base, intr)
         except KeyError:
             base.error(ErrorType.NAME_ERROR,
                        "Unknown method {}".format(method_name))
@@ -103,9 +104,12 @@ class ClassInstance():
 class Variable():
     def __init__(self, name, value):
         self.name = name
-        # use empty list for fields because we cannot
-        # initially set a field to a variable
-        self.value = Value(value, [])
+        if isinstance(value, Value):
+            self.value = value
+        else:
+            # use empty list for fields because we cannot
+            # initially set a field to a variable
+            self.value = Value(value, [])
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
@@ -161,8 +165,19 @@ class Method():
         self.params = params
         self.statement = statement
 
-    def run(self, fields, base, intr):
-        return self.statement.run(fields, base, intr)
+    def run(self, fields, params, base, intr):
+        # print('FIELDS')
+        # print(fields)
+        # print('PARAMS')
+        # print(self.params)
+        # print('PARAMS2')
+        # print(params)
+        scope = fields | {k: Variable(k, v) for (
+            k, v) in list(zip(self.params, params))}
+        # print('SCOPE')
+        # print(scope)
+
+        return self.statement.run(scope, base, intr)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -182,7 +197,9 @@ class Statement():
                     if statement[0] == InterpreterBase.RETURN_DEF:
                         return result
             case InterpreterBase.CALL_DEF:
-                print('TODO')
+                vars[self.params[0]].value.value.run_method(
+                    self.params[1], [Value(x, vars) for x in self.params[2:]],
+                    base, intr)
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(
                     self.params[0], vars, base, intr)
@@ -374,9 +391,17 @@ program = [
     '(class other',
     '(field hif 4)',
     '(field hit 5)',
-    '(method hi () (begin',
-    '(print "hi")',
-    '(print "hi")',
+    '(method mutator (thevar) (begin',
+    '(set thevar 999)',
+    '(print thevar)',
+    '))',
+    '(method inc (thevar) (begin',
+    '(set thevar (+ thevar 1))',
+    '(return thevar)',
+    '))',
+    '(method printme (thisone) (begin',
+    '(print thisone)',
+    '(print thisone)',
     '))',
     ')',
     '(class main',
@@ -413,7 +438,13 @@ program = [
     # '(print myfield)',
     '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "h")) )',
     '(print (* myfield 2))',
-    # '(set ligwardasdf 9)',
+    '(set myob (new other))',
+    # '(call myob hi)',
+    '(call myob printme myfield)',
+    '(print strfild)',
+    '(call myob mutator strfild)',
+    '(print strfild)',
+    '(call myob inc 5)',
     '(return 4)',
     # '(print null)',
     # '(print myfield2)',
