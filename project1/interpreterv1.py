@@ -88,7 +88,7 @@ class ClassInstance():
 
     def run_method(self, method_name, base, intr):
         try:
-            self.get_method(method_name).run(self.fields, base, intr)
+            return self.get_method(method_name).run(self.fields, base, intr)
         except KeyError:
             base.error(ErrorType.NAME_ERROR,
                        "Unknown method {}".format(method_name))
@@ -162,7 +162,7 @@ class Method():
         self.statement = statement
 
     def run(self, fields, base, intr):
-        self.statement.run(fields, base, intr)
+        return self.statement.run(fields, base, intr)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -177,8 +177,10 @@ class Statement():
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
-                    Statement(statement[0], statement[1:]).run(
+                    result = Statement(statement[0], statement[1:]).run(
                         vars, base, intr)
+                    if statement[0] == InterpreterBase.RETURN_DEF:
+                        return result
             case InterpreterBase.CALL_DEF:
                 print('TODO')
             case InterpreterBase.IF_DEF:
@@ -231,11 +233,17 @@ class Statement():
 
                 base.output(out_string)
             case InterpreterBase.RETURN_DEF:
-                print('TODO')
+                if len(self.params) == 0:
+                    return None
+
+                return self.__run_expression(self.params[0], vars, base, intr)
             case InterpreterBase.SET_DEF:
-                # print(self.params)
-                vars[self.params[0]].value = self.__run_expression(
-                    self.params[1], vars, base, intr)
+                try:
+                    vars[self.params[0]].value = self.__run_expression(
+                        self.params[1], vars, base, intr)
+                except KeyError:
+                    base.error(ErrorType.NAME_ERROR,
+                               "Unknown variable {}".format(self.params[0]))
             case InterpreterBase.WHILE_DEF:
                 condition = self.__run_expression(
                     self.params[0], vars, base, intr)
@@ -381,7 +389,6 @@ program = [
     # '(field myfield2 "strfild")',
     '(method main () (begin',
     # '(print (+ strfild " ther"))',
-    # '(print myfield)',
     # '(print (+ 9 9))',
     # '(print (/ myfield 9))',
     # '(print (/ 1000 9))',
@@ -406,6 +413,8 @@ program = [
     # '(print myfield)',
     '(if (!= 9 (+ 1 8)) (print "hi") (if false (print "yo") (print "h")) )',
     '(print (* myfield 2))',
+    # '(set ligwardasdf 9)',
+    '(return 4)',
     # '(print null)',
     # '(print myfield2)',
     # '(begin (print "INNER") (print "AGAIN"))',
