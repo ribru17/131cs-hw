@@ -89,7 +89,7 @@ class ClassInstance():
     def run_method(self, method_name, params, base, intr):
         try:
             return self.get_method(method_name).run(self.fields,
-                                                    params, base, intr)
+                                                    params, base, intr, self)
         except KeyError:
             base.error(ErrorType.NAME_ERROR,
                        "Unknown method {}".format(method_name))
@@ -165,7 +165,7 @@ class Method():
         self.params = params
         self.statement = statement
 
-    def run(self, fields, params, base, intr):
+    def run(self, fields, params, base, intr, me):
         # print('FIELDS')
         # print(fields)
         # print('PARAMS')
@@ -177,7 +177,7 @@ class Method():
         # print('SCOPE')
         # print(scope)
 
-        return self.statement.run(scope, base, intr)
+        return self.statement.run(scope, base, intr, me)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -188,18 +188,26 @@ class Statement():
         self.statement_type = statement_type
         self.params = params
 
-    def run(self, vars, base, intr):
+    def run(self, vars, base, intr, me):
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
                     result = Statement(statement[0], statement[1:]).run(
-                        vars, base, intr)
+                        vars, base, intr, me)
                     if statement[0] == InterpreterBase.RETURN_DEF:
                         return result
             case InterpreterBase.CALL_DEF:
-                vars[self.params[0]].value.value.run_method(
-                    self.params[1], [Value(x, vars) for x in self.params[2:]],
-                    base, intr)
+                print(self.params)
+                if self.params[0] == InterpreterBase.ME_DEF:
+                    me.run_method(
+                        self.params[1], [Value(x, vars)
+                                         for x in self.params[2:]],
+                        base, intr)
+                else:
+                    vars[self.params[0]].value.value.run_method(
+                        self.params[1], [Value(x, vars)
+                                         for x in self.params[2:]],
+                        base, intr)
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(
                     self.params[0], vars, base, intr)
@@ -209,13 +217,13 @@ class Statement():
 
                 if condition.value is True:
                     Statement(self.params[1][0],
-                              self.params[1][1:]).run(vars, base, intr)
+                              self.params[1][1:]).run(vars, base, intr, me)
                 else:
                     if len(self.params) < 3:
                         return
                     elif len(self.params) == 3:
                         Statement(self.params[2][0],
-                                  self.params[2][1:]).run(vars, base, intr)
+                                  self.params[2][1:]).run(vars, base, intr, me)
                     else:
                         base.error(
                             ErrorType.SYNTAX_ERROR, "Too many `if` branches")
@@ -269,7 +277,7 @@ class Statement():
                         ErrorType.TYPE_ERROR, "Non-boolean while condition")
                 while condition.value is True:
                     Statement(self.params[1][0],
-                              self.params[1][1:]).run(vars, base, intr)
+                              self.params[1][1:]).run(vars, base, intr, me)
                     condition = self.__run_expression(
                         self.params[0], vars, base, intr)
             case other:
@@ -393,7 +401,8 @@ program = [
     '(field hit 5)',
     '(method mutator (thevar) (begin',
     '(set thevar 999)',
-    '(print thevar)',
+    '(call me printme 999)',
+    '(print "OK")',
     '))',
     '(method inc (thevar) (begin',
     '(set thevar (+ thevar 1))',
@@ -410,6 +419,9 @@ program = [
     '(field myob null)',
     # '(field strfild2 strfild)',
     '(field x 2)',
+    '(method mework () (begin',
+    '(print "me worked")',
+    '))',
     # '(field strfild "helo")',
     # '(field myfield2 "strfild")',
     '(method main () (begin',
@@ -443,8 +455,9 @@ program = [
     '(call myob printme myfield)',
     '(print strfild)',
     '(call myob mutator strfild)',
+    '(call me mework)',
     '(print strfild)',
-    '(call myob inc 5)',
+    # '(call myob inc 5)',
     '(return 4)',
     # '(print null)',
     # '(print myfield2)',
