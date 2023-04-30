@@ -199,7 +199,11 @@ class Statement():
                             for x in self.params[2:]],
                         base, intr)
                 else:
-                    obj = vars[self.params[0]].value.value
+                    if isinstance(self.params[0], list):
+                        obj = self.__run_expression(self.params[0],
+                                                    vars, base, intr, me).value
+                    else:
+                        obj = vars[self.params[0]].value.value
                     if isinstance(obj, type(None)):
                         base.error(ErrorType.FAULT_ERROR,
                                    "Tried to dereference null object")
@@ -415,10 +419,15 @@ class Statement():
                                 for x in expr[3:]],
                             base, intr)
                     else:
-                        if isinstance(vars[expr[1]].value.value, type(None)):
+                        if isinstance(expr[1], list):
+                            obj = self.__run_expression(
+                                expr[1], vars, base, intr, me).value
+                        else:
+                            obj = vars[expr[1]].value.value
+                        if isinstance(obj, type(None)):
                             base.error(ErrorType.FAULT_ERROR,
                                        "Tried to dereference null object")
-                        return vars[expr[1]].value.value.run_method(
+                        return obj.run_method(
                             expr[2], [self.__run_expression(
                                 x, vars, base, intr, me)
                                 for x in expr[3:]],
@@ -517,6 +526,8 @@ program = [
     '      (print "Enter a number: ")',
     # '      (print (call obj meth 4))',
     '      (call me printwrap 7)',
+    '      (call (new other) meth 7)',
+    '      (print (call (new other) meth 7))',
     '      (while (> lig 0)',
     '        (set lig (- lig 1))',
     '        (print 5 " ok " false null)',
