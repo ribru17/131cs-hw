@@ -54,3 +54,58 @@ closure/block without any real reason (i.e. the closure in the example is not
 part of a conditional statement or loop or something).
 
 ## d)
+
+It looks like this language uses object references to hold values (judging by
+the `object_id` field). I can't see any immediate differences between `n1 == n2`
+and `s1 == s2` but it is possible that the former compared the `object_id`
+fields while the latter would have to have compared the actual values of the
+objects (the strings themselves). This would make it similar to Python.
+
+# 3.
+
+## a)
+
+If I could add a type annotation it would look something like this:
+
+```python
+def nth_fibonacci(n: int) -> int:
+    # ...
+```
+
+However this would not work that great because this function returns a float,
+even though it is meant to return an integer. To make this type annotation hold
+we would need to convert the return value to an `int()` before returning.
+
+## b)
+
+We could set the return type to an enum `Option` that either contains
+`Some(value)` or `None`.
+
+## c)
+
+This is not the best annotation because it loses some specificity due to the
+fact that `Num` is a supertype of all numbers and thus this annotation would
+allow us to add, say, an integer and a float (which we would maybe not want to
+do without requiring an explicit conversion). Perhaps a better annotation would
+be to specify with generics that both arguments must be a subset of the `Num`
+type AND both must be of the same type (and return said type).
+
+# 4.
+
+## a)
+
+This is because a union only holds one value at a time and C++ will implicitly
+cast the bits to whichever type you access at that point. This works because C++
+is weakly typed, which is why it allows odd behavior like this where data can be
+interpreted as any type without conversion or proper validity checking.
+
+## b)
+
+This seems to show that Zig is strongly typed, as it implements the necessary
+checks to make sure you can't accidentally (or on purpose) subject yourself to
+any of the weird behavior above caused by unsafe casting. I think that this type
+system is better because it seems more modern and intuitive.
+
+# 5.
+
+## a)
