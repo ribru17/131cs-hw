@@ -109,3 +109,19 @@ system is better because it seems more modern and intuitive.
 # 5.
 
 ## a)
+
+`name` is in scope for the `boop` function only, while its lifetime is bound to
+the return value of the function (in this case it dies after being called
+because the return value is not assigned to anything). `res` is also in scope
+only in the `boop` function (once it becomes defined) and its lifetime lasts the
+same amount of time. The object bound to `res` is not ever really in scope since
+it is a value but its lifetime remains for the duration of the scope of `res`
+and further until the lifetime of the return value of the `boop` function ends.
+In this way it is different from the actual `res` variable.
+
+## b)
+
+This is because we are setting `n` to point to the address of the variable `x`,
+but `x` is only in scope for the block enclosed in curly brackets. Thus after
+the block ends the variable is out of scope and dies and the value the address
+points to becomes undefined.
