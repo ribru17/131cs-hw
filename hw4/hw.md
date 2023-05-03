@@ -2,10 +2,11 @@
 
 ## a)
 
-`Fractional` is a supertype of `Float`. `Int` and `Integer` are subtypes of the
-`Integral` type and `Int` is also a subtype of `Integer` since `Int` is bounded
-to a certain amount of bits while `Integer` is unbounded. All of these are
-subclasses of `Num`.
+`Fractional` is a supertype of `Float` because float provides operations that
+`Fractional` does not, like trigonometric and logarithmic functions. `Int` and
+`Integer` are subtypes of the `Integral` type and `Int` is also a subtype of
+`Integer` since `Int` is bounded to a certain amount of bits while `Integer` is
+unbounded. All of these are subclasses of `Num`.
 
 ## b)
 
