@@ -18,7 +18,7 @@ because they perform integer operations like truncated division and modulo.
 
 ## c)
 
-In C++, `float` is a supertype of `const float` since it allows all of the same
+In C++, `float` is a subtype of `const float` since it allows all of the same
 operations as float, as well as the addition assignment operation which a
 `const float` does not allow since it must remain constant. The same
 relationship holds for `int` and `const int`. `const float` and `const int` are
