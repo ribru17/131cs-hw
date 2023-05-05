@@ -215,3 +215,9 @@ healHandler n hp
 -- -1
 -- >>> super_giuseppe [Fight 100]
 -- -1
+
+z = foldl (\x y -> x ++ y)
+a = z [0, 3, 5] [[9, 2], [888]]
+
+-- >>> a
+-- [0,3,5,9,2,888]
