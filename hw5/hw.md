@@ -87,3 +87,43 @@ memory.
 Since Go destructors may not run long after an object is unreachable (and may
 not run at all!) I would advise Yvonne to implement her own manual socket
 cleanup method that doesn't rely on a finalizer/destructor to run.
+
+# 3.
+
+## a)
+
+Here the parameters are possibly passed by most likely passed by reference,
+since there is no discernable boxing (not pass by object reference) or
+dereferencing (not pass by pointer) and yet the variables are modified after
+being passed into the function (not pass by value).
+
+## b)
+
+Here we may now be using pass by value or pass by object reference, or pass by
+pointer (assigning x or y could just perform pointer arithmetic on a copy of the
+address which would be why our variables aren't mutated). This could not be pass
+by reference because if this was the case our variables would be mutated.
+
+## c)
+
+If it was pass by value, it would print `2`, otherwise it would print `5`. This
+is because pass by value entails creating a copy of the entire instance of the
+`X` class before passing it as a parameter to the function. Pass by object
+reference means passing a copy of a pointer to the object, which still points to
+the same memory and thus is able to change the boxed field `x`.
+
+# 4.
+
+Based on this assembly code it looks like conversions are being applied on lines
+3, 4, and 5. This is because the other assembly segments highlighted match the
+original base case (besides the call to `...basic_ostream...` being a bit
+different in the unsigned int case to account for the type specifications) while
+in the other sections:
+
+- the `boolean` section implements additional code that converts the value to a
+  `1` if the expression evalutes to `true` or `0` otherwise
+- the `short` section implements a `movswl` instruction which (narrowingly)
+  converts the data to a `short`
+- the `float` section implements a `cvtsi2ssl` instruction to convert the bits
+  to floating point representation before calling the `...basic_ostream...`
+  instruction, specifying the input as a float with the `f` suffix

@@ -44,20 +44,30 @@ class my_shared_ptr {
     }
 };
 
+// int main() {
+//     auto ptr1 = new int(100);
+//     auto ptr2 = new int(200);
+//     my_shared_ptr m(ptr1); // should create a new shared_ptr for ptr1
+//     my_shared_ptr n(ptr2);
+//     my_shared_ptr o(n);
+//     n = m;
+//     // n = n;
+
+//     std::cout << "showing info: ";
+//     o.showInfo();
+//     o = m;
+//     std::cout << "info out" << std::endl;
+
+//     std::cout << "done" << std::endl;
+//     return 0;
+// }
+
 int main() {
-    auto ptr1 = new int(100);
-    auto ptr2 = new int(200);
-    my_shared_ptr m(ptr1); // should create a new shared_ptr for ptr1
-    my_shared_ptr n(ptr2);
-    my_shared_ptr o(n);
-    n = m;
-    // n = n;
-
-    std::cout << "showing info: ";
-    o.showInfo();
-    o = m;
-    std::cout << "info out" << std::endl;
-
-    std::cout << "done" << std::endl;
-    return 0;
+    int a = 5;
+    std::cout << a;
+    std::cout << (const int)a;    // Line 1
+    std::cout << (unsigned int)a; // Line 2
+    std::cout << (short)a;        // Line 3
+    std::cout << (bool)a;         // Line 4
+    std::cout << (float)a;        // Line 5
 }
