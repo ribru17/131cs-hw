@@ -1,7 +1,10 @@
 (class main
   (field string p "J")
-  (field bool z false)
+  (field bool z true)
+  (field bool z2 false)
   (field null q null)
+  #(field int q3 null)
+  (field myclass q2 null)
   (field int sup 18)
   (method myclass hi () (set p "FF"))
   (method void lettest ()

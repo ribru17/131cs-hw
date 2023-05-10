@@ -163,10 +163,16 @@ class Variable():
                        "Invalid variable type {}".format(var_type))
         elif var_type == InterpreterBase.NULL_DEF:
             var_type = InterpreterBase.VOID_DEF
-        if (self.value.value_type != var_type
-                and self.value.value_type != InterpreterBase.VOID_DEF):
-            base.error(ErrorType.TYPE_ERROR,
-                       "Type mismatch with variable {}".format(name))
+        if self.value.value_type != var_type:
+            if self.value.value_type != InterpreterBase.VOID_DEF:
+                base.error(ErrorType.TYPE_ERROR,
+                           "Type mismatch with variable {}".format(name))
+            # `null` can only be assigned to object or null type
+            elif var_type in [InterpreterBase.INT_DEF,
+                              InterpreterBase.BOOL_DEF,
+                              InterpreterBase.STRING_DEF,]:
+                base.error(ErrorType.TYPE_ERROR,
+                           "Type mismatch with variable {}".format(name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
