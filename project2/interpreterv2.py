@@ -35,7 +35,7 @@ class Interpreter(InterpreterBase):
                 if item[0] == InterpreterBase.FIELD_DEF:
                     if item[2] in fields:
                         super().error(ErrorType.NAME_ERROR,
-                                      "Duplicate field {}".format(item[1]))
+                                      "Duplicate field {}".format(item[2]))
 
                     fields[item[2]] = Variable(
                         item[1], item[2], item[3], super())
@@ -43,7 +43,7 @@ class Interpreter(InterpreterBase):
                 elif item[0] == InterpreterBase.METHOD_DEF:
                     if item[2] in methods:
                         super().error(ErrorType.NAME_ERROR,
-                                      "Duplicate method {}".format(item[1]))
+                                      "Duplicate method {}".format(item[2]))
 
                     methods[item[2]] = Method(item[1], item[2], item[3],
                                               Statement(item[4][0],
