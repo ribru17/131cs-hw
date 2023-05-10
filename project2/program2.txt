@@ -20,8 +20,8 @@
     #(print yo)
     )
   )
-  (method int hit ((int o)) (return o))
-  (method void value_or_zero ((glorb q))
+  (method int hit ((int o) (string lig)) (return o))
+  (method void value_or_zero ((int q))
     (begin
       (if (< q 0)
         (print "q is less than zero")

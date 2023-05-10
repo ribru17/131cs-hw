@@ -59,42 +59,50 @@ class Interpreter(InterpreterBase):
             self.classes[class_name] = Class(class_name, fields, methods)
 
         # make sure fields and methods of a class type have a real class type
-        # TODO: check PARAMETERS of methods as well
         classes = self.classes.values()
         class_names = self.classes.keys()
         for checked_class in classes:
             for field in checked_class.fields.values():
-                match field.var_type:
-                    case InterpreterBase.INT_DEF:
-                        continue
-                    case InterpreterBase.STRING_DEF:
-                        continue
-                    case InterpreterBase.BOOL_DEF:
-                        continue
-                    case InterpreterBase.NULL_DEF:
-                        continue
-                    case some_class:
-                        if some_class not in class_names:
-                            super().error(ErrorType.TYPE_ERROR,
-                                          "Type mismatch with field {}"
-                                          .format(field.name))
+                reserved = [
+                    InterpreterBase.INT_DEF,
+                    InterpreterBase.STRING_DEF,
+                    InterpreterBase.BOOL_DEF,
+                    InterpreterBase.NULL_DEF,
+                ]
+                if (field.var_type not in class_names and
+                        field.var_type not in reserved):
+                    super().error(ErrorType.TYPE_ERROR,
+                                  "Type mismatch with field {}"
+                                  .format(field.name))
             for method in checked_class.methods.values():
-                match method.return_type:
-                    case InterpreterBase.INT_DEF:
-                        continue
-                    case InterpreterBase.STRING_DEF:
-                        continue
-                    case InterpreterBase.BOOL_DEF:
-                        continue
-                    case InterpreterBase.NULL_DEF:
-                        continue
-                    case InterpreterBase.VOID_DEF:
-                        continue
-                    case some_class:
-                        if some_class not in class_names:
-                            super().error(ErrorType.TYPE_ERROR,
-                                          "Type mismatch with method {}"
-                                          .format(method.name))
+                reserved = [
+                    InterpreterBase.INT_DEF,
+                    InterpreterBase.STRING_DEF,
+                    InterpreterBase.BOOL_DEF,
+                    InterpreterBase.NULL_DEF,
+                    InterpreterBase.VOID_DEF,
+                ]
+                if (method.return_type not in class_names and
+                        method.return_type not in reserved):
+                    super().error(ErrorType.TYPE_ERROR,
+                                  "Type mismatch with method {}"
+                                  .format(method.name))
+
+                # method return type passed check, now to check parameters
+                for param in method.params:
+                    param_type = param[0]
+                    param_name = param[1]
+                    reserved = [
+                        InterpreterBase.INT_DEF,
+                        InterpreterBase.STRING_DEF,
+                        InterpreterBase.BOOL_DEF,
+                        InterpreterBase.NULL_DEF,
+                    ]
+                    if (param_type not in class_names and
+                            param_type not in reserved):
+                        super().error(ErrorType.TYPE_ERROR,
+                                      "Type mismatch with param {}"
+                                      .format(param_name))
 
         self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
             super().MAIN_FUNC_DEF, [], super(), self)
@@ -573,8 +581,9 @@ class Statement():
             return Value(expr, vars, base)
 
 
-with open('program2.txt') as program_file:
-    program = program_file.readlines()
+if __name__ == '__main__':
+    with open('program2.txt') as program_file:
+        program = program_file.readlines()
 
-interpreter = Interpreter()
-interpreter.run(program)
+    interpreter = Interpreter()
+    interpreter.run(program)
