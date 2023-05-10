@@ -166,7 +166,7 @@ class Variable():
         if (self.value.value_type != var_type
                 and self.value.value_type != InterpreterBase.VOID_DEF):
             base.error(ErrorType.TYPE_ERROR,
-                       "Type mismatch with field {}".format(name))
+                       "Type mismatch with variable {}".format(name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
@@ -410,6 +410,18 @@ class Statement():
                             return result, returned
                     condition = self.__run_expression(
                         self.params[0], vars, base, intr, me)
+                return Value(InterpreterBase.NULL_DEF, vars, base), None
+            case InterpreterBase.LET_DEF:
+                temp_vars = {}
+                for var in self.params[0]:
+                    temp_vars[var[1]] = Variable(var[0], var[1], var[2], base)
+
+                for statement in self.params[1:]:
+                    result, returned = Statement(statement[0],
+                                                 statement[1:]).run(
+                        vars | temp_vars, base, intr, me)
+                    if returned is not None:
+                        return result, returned
                 return Value(InterpreterBase.NULL_DEF, vars, base), None
             case other:
                 base.error(ErrorType.SYNTAX_ERROR,

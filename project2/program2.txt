@@ -1,9 +1,20 @@
 (class main
   (field string p "J")
-  (field bool z null)
+  (field bool z false)
   (field null q null)
+  (field int sup 18)
   (method myclass hi () (set p "FF"))
-  (method int hit () (return ))
+  (method void lettest ()
+    (begin
+    (let ((int sup 5) (bool yo true)) 
+      (print sup)
+      (print "LET DONE")
+        (print yo)
+    )
+    #(print yo)
+    )
+  )
+  (method int hit ((int o)) (return o))
   (method void value_or_zero ((int q))
     (begin
       (if (< q 0)
@@ -18,9 +29,10 @@
       #(print (call me value_or_zero -10)) # prints 0
       #(print "HI: " (call me hi)) # prints 0
       #(print "BREAKPOINT")
-      (print (call me hi)) # prints 0
-      (print (call me hit)) # prints 0
+      #(print (call me hi)) # prints 0
+      #(print (call me hit 88)) # prints 0
       #(print z)
+      (print (call me lettest))
     )
   )
 )
