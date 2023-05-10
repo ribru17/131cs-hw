@@ -58,6 +58,19 @@ class Interpreter(InterpreterBase):
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
+        self.__validate_class_types()
+
+        self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
+            super().MAIN_FUNC_DEF, [], super(), self)
+
+    def get_class(self, class_name):
+        try:
+            return self.classes[class_name]
+        except KeyError:
+            super().error(ErrorType.TYPE_ERROR,
+                          "Unknown class {}".format(class_name))
+
+    def __validate_class_types(self):
         # make sure fields and methods of a class type have a real class type
         classes = self.classes.values()
         class_names = self.classes.keys()
@@ -103,16 +116,6 @@ class Interpreter(InterpreterBase):
                         super().error(ErrorType.TYPE_ERROR,
                                       "Type mismatch with param {}"
                                       .format(param_name))
-
-        self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
-            super().MAIN_FUNC_DEF, [], super(), self)
-
-    def get_class(self, class_name):
-        try:
-            return self.classes[class_name]
-        except KeyError:
-            super().error(ErrorType.TYPE_ERROR,
-                          "Unknown class {}".format(class_name))
 
     def __str__(self):
         return str([str(x) for x in self.classes])
@@ -402,6 +405,8 @@ class Statement():
                 return self.__run_expression(self.params[0],
                                              vars, base, intr,
                                              me), InterpreterBase.RETURN_DEF
+            # TODO: throw a type error if trying to set a variable to a value
+            # of incompatible type
             case InterpreterBase.SET_DEF:
                 try:
                     vars[self.params[0]].value = self.__run_expression(

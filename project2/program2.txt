@@ -7,12 +7,16 @@
   (field myclass q2 null)
   (field int sup 18)
   (method myclass hi () (set p "FF"))
-  (method int lettest ()
+  (method int lettest ((int hey))
     (begin
     (let ((int sup 5) (bool yo true)) 
       (print sup)
+      (set sup 9)
+      (print sup)
       (print "LET DONE")
-        (print yo)
+      (print yo)
+      (print hey)
+      (return 99)
     )
     (let ((int y 5) )
        (print y)		# this prints out 5
@@ -38,7 +42,7 @@
       #(print (call me hi)) # prints 0
       #(print (call me hit 88)) # prints 0
       #(print z)
-      (print (call me lettest))
+      (print (call me lettest 77))
     )
   )
 )
