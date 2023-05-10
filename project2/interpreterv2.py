@@ -58,7 +58,8 @@ class Interpreter(InterpreterBase):
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
-        # validate field and method types
+        # make sure fields and methods of a class type have a real class type
+        # TODO: check PARAMETERS of methods as well
         classes = self.classes.values()
         class_names = self.classes.keys()
         for checked_class in classes:
@@ -420,6 +421,9 @@ class Statement():
             case InterpreterBase.LET_DEF:
                 temp_vars = {}
                 for var in self.params[0]:
+                    if var[1] in temp_vars.keys():
+                        base.error(ErrorType.NAME_ERROR,
+                                   "Duplicate let var {}".format(var[1]))
                     temp_vars[var[1]] = Variable(var[0], var[1], var[2], base)
 
                 for statement in self.params[1:]:

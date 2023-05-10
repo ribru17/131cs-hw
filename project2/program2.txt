@@ -7,18 +7,21 @@
   (field myclass q2 null)
   (field int sup 18)
   (method myclass hi () (set p "FF"))
-  (method void lettest ()
+  (method int lettest ()
     (begin
     (let ((int sup 5) (bool yo true)) 
       (print sup)
       (print "LET DONE")
         (print yo)
     )
+    (let ((int y 5) )
+       (print y)		# this prints out 5
+     )
     #(print yo)
     )
   )
   (method int hit ((int o)) (return o))
-  (method void value_or_zero ((int q))
+  (method void value_or_zero ((glorb q))
     (begin
       (if (< q 0)
         (print "q is less than zero")
