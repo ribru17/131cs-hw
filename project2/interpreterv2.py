@@ -2,6 +2,13 @@ from intbase import InterpreterBase, ErrorType
 from bparser import BParser
 from copy import deepcopy
 
+DEFAULT_VALUES = {
+    InterpreterBase.INT_DEF: '0',
+    InterpreterBase.STRING_DEF: '""',
+    InterpreterBase.BOOL_DEF: 'false',
+    InterpreterBase.VOID_DEF: InterpreterBase.NULL_DEF,
+}
+
 
 class Interpreter(InterpreterBase):
     def __init__(self, console_output=True, inp=None, trace_output=False):
@@ -13,6 +20,7 @@ class Interpreter(InterpreterBase):
             super().error(ErrorType.SYNTAX_ERROR)
             return
 
+        # track classes
         self.classes = {}
         for class_def in parsed_program:
             if class_def[0] != InterpreterBase.CLASS_DEF:
@@ -25,19 +33,22 @@ class Interpreter(InterpreterBase):
             methods = {}
             for item in class_def[2:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
-                    if item[1] in fields:
+                    if item[2] in fields:
                         super().error(ErrorType.NAME_ERROR,
                                       "Duplicate field {}".format(item[1]))
 
-                    fields[item[1]] = Variable(item[1], item[2], super())
+                    fields[item[2]] = Variable(
+                        item[1], item[2], item[3], super())
+
                 elif item[0] == InterpreterBase.METHOD_DEF:
-                    if item[1] in methods:
+                    if item[2] in methods:
                         super().error(ErrorType.NAME_ERROR,
                                       "Duplicate method {}".format(item[1]))
 
-                    methods[item[1]] = Method(item[1], item[2],
-                                              Statement(item[3][0],
-                                                        item[3][1:]))
+                    methods[item[2]] = Method(item[1], item[2], item[3],
+                                              Statement(item[4][0],
+                                                        item[4][1:]))
+
                 else:
                     super().error(ErrorType.SYNTAX_ERROR)
                     return
@@ -47,6 +58,42 @@ class Interpreter(InterpreterBase):
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
+        # validate field and method types
+        classes = self.classes.values()
+        class_names = self.classes.keys()
+        for checked_class in classes:
+            for field in checked_class.fields.values():
+                match field.var_type:
+                    case InterpreterBase.INT_DEF:
+                        continue
+                    case InterpreterBase.STRING_DEF:
+                        continue
+                    case InterpreterBase.BOOL_DEF:
+                        continue
+                    case InterpreterBase.NULL_DEF:
+                        continue
+                    case some_class:
+                        if some_class not in class_names:
+                            super().error(ErrorType.TYPE_ERROR,
+                                          "Type mismatch with field {}"
+                                          .format(field.name))
+            for method in checked_class.methods.values():
+                match method.return_type:
+                    case InterpreterBase.INT_DEF:
+                        continue
+                    case InterpreterBase.STRING_DEF:
+                        continue
+                    case InterpreterBase.BOOL_DEF:
+                        continue
+                    case InterpreterBase.NULL_DEF:
+                        continue
+                    case InterpreterBase.VOID_DEF:
+                        continue
+                    case some_class:
+                        if some_class not in class_names:
+                            super().error(ErrorType.TYPE_ERROR,
+                                          "Type mismatch with method {}"
+                                          .format(method.name))
         self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
             super().MAIN_FUNC_DEF, [], super(), self)
 
@@ -99,14 +146,26 @@ class ClassInstance():
 
 
 class Variable():
-    def __init__(self, name, value, base):
+    def __init__(self, var_type, name, value, base):
         self.name = name
+        self.var_type = var_type
         if isinstance(value, Value):
             self.value = value
         else:
-            # use empty list for fields because we cannot
+            # use empty dict for fields because we cannot
             # initially set a field to a variable
-            self.value = Value(value, [], base)
+            self.value = Value(value, {}, base)
+
+        # checks for all cases except invalid class (to be checked in run)
+        if var_type == InterpreterBase.VOID_DEF:
+            base.error(ErrorType.TYPE_ERROR,
+                       "Invalid variable type {}".format(var_type))
+        elif var_type == InterpreterBase.NULL_DEF:
+            var_type = InterpreterBase.VOID_DEF
+        if (self.value.value_type != var_type
+                and self.value.value_type != InterpreterBase.VOID_DEF):
+            base.error(ErrorType.TYPE_ERROR,
+                       "Type mismatch with field {}".format(name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
@@ -157,19 +216,52 @@ class Value():
 
 
 class Method():
-    def __init__(self, name, params, statement):
+    def __init__(self, return_type, name, params, statement):
         self.name = name
         self.params = params
+        self.return_type = return_type
         self.statement = statement
 
-    def run(self, fields, params, base, intr, me):
-        if len(params) != len(self.params):
+    def run(self, fields, arguments, base, intr, me):
+        if len(arguments) != len(self.params):
             base.error(ErrorType.TYPE_ERROR,
                        'Wrong number of arguments for {}'.format(self.name))
-        scope = fields | {k: Variable(k, v, base) for (
-            k, v) in list(zip(self.params, params))}
+        scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+            k, v) in list(zip(self.params, arguments))}
+        # ~~^ `k` is [var_type, var_name]
 
-        return self.statement.run(scope, base, intr, me)[0]
+        return_value, return_trap = self.statement.run(
+            scope, base, intr, me)
+
+        # void functions cannot return a value
+        if self.return_type == InterpreterBase.VOID_DEF:
+            if (return_trap is not None and
+                    return_trap is not InterpreterBase.VOID_DEF):
+                base.error(ErrorType.TYPE_ERROR,
+                           "Void function cannot return a value")
+            else:
+                return Value(DEFAULT_VALUES[InterpreterBase.VOID_DEF],
+                             {}, base)
+        # if statement has incorrect return value, throw an error
+        if (return_value.value_type != InterpreterBase.VOID_DEF and
+                return_value.value_type != self.return_type):
+            base.error(ErrorType.TYPE_ERROR,
+                       "Invalid return type for {}".format(self.name))
+
+        if self.return_type == InterpreterBase.NULL_DEF:
+            return return_value
+
+        # if it explicitly returned, return that value
+        if return_trap is not None:
+            return return_value
+        else:
+            try:  # returning a primitive?
+                default_val = DEFAULT_VALUES[self.return_type]
+                return Value(default_val, {}, base)
+            except KeyError:  # returning a class
+                # call this to throw an error if the class does not exist
+                intr.get_class(self.return_type)
+                return Value(InterpreterBase.NULL_DEF, {}, base)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -181,6 +273,11 @@ class Statement():
         self.params = params
 
     def run(self, vars, base, intr, me):
+        """
+        Returns `(val, return_trap)` where `val` is the value returned from
+        the statement and `return_trap` is `None` if no value is explicitly
+        returned
+        """
         match self.statement_type:
             case InterpreterBase.BEGIN_DEF:
                 for statement in self.params:
@@ -212,6 +309,8 @@ class Statement():
                             x, vars, base, intr, me)
                             for x in self.params[2:]],
                         base, intr)
+                # a call STATEMENT will always return null,
+                # unlike call expression
                 return Value(InterpreterBase.NULL_DEF, vars, base), None
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(
@@ -271,7 +370,7 @@ class Statement():
             case InterpreterBase.RETURN_DEF:
                 if len(self.params) == 0:
                     return Value(InterpreterBase.NULL_DEF,
-                                 vars, base), InterpreterBase.RETURN_DEF
+                                 vars, base), InterpreterBase.VOID_DEF
 
                 return self.__run_expression(self.params[0],
                                              vars, base, intr,
@@ -440,9 +539,8 @@ class Statement():
             return Value(expr, vars, base)
 
 
-if __name__ == '__main__':
-    with open('program.txt') as program_file:
-        program = program_file.readlines()
+with open('program2.txt') as program_file:
+    program = program_file.readlines()
 
-    interpreter = Interpreter()
-    interpreter.run(program)
+interpreter = Interpreter()
+interpreter.run(program)
