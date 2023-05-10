@@ -94,6 +94,7 @@ class Interpreter(InterpreterBase):
                             super().error(ErrorType.TYPE_ERROR,
                                           "Type mismatch with method {}"
                                           .format(method.name))
+
         self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
             super().MAIN_FUNC_DEF, [], super(), self)
 
@@ -248,19 +249,30 @@ class Method():
             base.error(ErrorType.TYPE_ERROR,
                        "Invalid return type for {}".format(self.name))
 
+        # null function always must return null
         if self.return_type == InterpreterBase.NULL_DEF:
             return return_value
 
-        # if it explicitly returned, return that value
+        # if it explicitly returned
         if return_trap is not None:
-            return return_value
+            # if of form `return` and not `return x`
+            if return_trap == InterpreterBase.VOID_DEF:
+                try:  # returning a primitive?
+                    default_val = DEFAULT_VALUES[self.return_type]
+                    return Value(default_val, {}, base)
+                except KeyError:  # returning a class
+                    return Value(InterpreterBase.NULL_DEF, {}, base)
+            else:
+                # only perform type conversions for booleans?
+                # this weird behavior follows the barista implementation
+                if self.return_type == InterpreterBase.BOOL_DEF:
+                    return Value(InterpreterBase.FALSE_DEF, {}, base)
+                return return_value
         else:
             try:  # returning a primitive?
                 default_val = DEFAULT_VALUES[self.return_type]
                 return Value(default_val, {}, base)
             except KeyError:  # returning a class
-                # call this to throw an error if the class does not exist
-                intr.get_class(self.return_type)
                 return Value(InterpreterBase.NULL_DEF, {}, base)
 
     def __str__(self):

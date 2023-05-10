@@ -1,0 +1,29 @@
+(class main
+  (field string p "J")
+  (field bool z null)
+  (field null q null)
+  (method myclass hi () (set p "FF"))
+  (method int hit () (return ))
+  (method void value_or_zero ((int q))
+    (begin
+      (if (< q 0)
+        (print "q is less than zero")
+        (return) # else case
+      )
+    )
+  )
+  (method void main ()
+    (begin
+      #(print (call me value_or_zero 10))  # prints 10
+      #(print (call me value_or_zero -10)) # prints 0
+      #(print "HI: " (call me hi)) # prints 0
+      #(print "BREAKPOINT")
+      (print (call me hi)) # prints 0
+      (print (call me hit)) # prints 0
+      #(print z)
+    )
+  )
+)
+(class myclass
+    (method void hi () (print "HI"))
+)
