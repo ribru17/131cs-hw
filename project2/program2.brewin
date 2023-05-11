@@ -1,34 +1,27 @@
-(class ligma
-    (method void hi () (print "HI"))
-)
-
-(class person inherits ligma
+(class person
   (field string name "jane")
-  (method void set_name ((string n)) (set name n))
-  (method string get_name () (print name))
-)
-
-(class student inherits person
-  (field int beers 3)
-  (method void set_beers ((int g)) (set beers g))
-  (method int get_beers () (return beers))
-  (method void check () (call super get_name))
-)
-
-(class main
-  (field student s null)
-  (field ligma l null)
-  (field person o null)
-  (method void testin ((person lig)) (print "WORKED"))
-  (method void main ()
-    (begin
-      (set s (new student))
-      (set l (new ligma))
-      (set o (new person))
-      (call me testin s)
-      (call s check)
-      #(print (call s get_name) " has " (call s get_beers) " beers")
-    )
+  (method void say_something () (print name " says hi")
   )
 )
 
+(class student inherits person
+  (method void hi () (print "HI"))
+  #(method void say_something ()
+  #  (print "Can I have an extension?")
+  #)
+)
+
+(class main
+  (field person p null)
+  (method void foo ((person p)) # foo accepts a "person" as an argument
+    (call p say_something)
+  )
+  (method void main ()
+    (begin
+      (set p (new student))  # Assigns p, which is a person object ref
+                             # to a student obj. This is polymorphism!  
+      (call me foo p)        # Passes a student object as an argument 
+                             # to foo. This is also polymorphism!
+    )
+  )
+)

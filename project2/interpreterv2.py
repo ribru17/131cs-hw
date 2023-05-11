@@ -181,15 +181,21 @@ class ClassInstance():
         self.parent = parent
 
     def run_method(self, method_name, params, base, intr):
-        try:
-            return self.get_method(method_name).run(self.fields,
-                                                    params, base, intr, self)
-        except KeyError:
-            base.error(ErrorType.NAME_ERROR,
-                       "Unknown method {}".format(method_name))
+        method, container = self.__get_method(method_name, base)
+        return method.run(container.fields, params, base, intr, container)
 
-    def get_method(self, method_name):
-        return self.methods[method_name]
+    def __get_method(self, method_name, base):
+        """
+        Returns (`method`, `pointer to container class`)
+        """
+        try:
+            return self.methods[method_name], self
+        except KeyError:
+            if self.parent is None:
+                base.error(ErrorType.NAME_ERROR,
+                           "Unknown method {}".format(method_name))
+            else:
+                return self.parent.__get_method(method_name, base)
 
     def __str__(self):
         return '<Class instance of {}>'.format(self.name)
