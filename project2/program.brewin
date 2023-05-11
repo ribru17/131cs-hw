@@ -70,6 +70,8 @@
       (print (call me lettest null))
       #(print (call me hit 5 (new myclass)))
       (call me hi 8 90)
+      (let ((int asdf 99)) (set p "THIS IS NOW P"))
+      (print p)
     )
   )
 )

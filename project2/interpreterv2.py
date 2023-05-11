@@ -31,7 +31,14 @@ class Interpreter(InterpreterBase):
             # populate fields and classes
             fields = {}
             methods = {}
-            for item in class_def[2:]:
+            inherits = []
+
+            # don't treat `inherits x` as field or class or syntax error
+            check_index = 2
+            if class_def[2] == InterpreterBase.INHERITS_DEF:
+                check_index = 4
+                inherits.append(class_def[3])
+            for item in class_def[check_index:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
                     if item[2] in fields:
                         super().error(ErrorType.NAME_ERROR,
@@ -56,7 +63,8 @@ class Interpreter(InterpreterBase):
             if class_name in self.classes:
                 super().error(ErrorType.NAME_ERROR,
                               "Duplicate class {}".format(class_name))
-            self.classes[class_name] = Class(class_name, fields, methods)
+            self.classes[class_name] = Class(class_name, fields,
+                                             methods, inherits)
 
         self.__validate_class_types()
 
@@ -75,6 +83,23 @@ class Interpreter(InterpreterBase):
         classes = self.classes.values()
         class_names = self.classes.keys()
         for checked_class in classes:
+            # validate inheritance list
+            parent_inheritance = []
+            # (this should only execute one iteration)
+            for class_name in checked_class.inherits:
+                parent = self.get_class(class_name)
+                # check for circular inheritance
+                if checked_class.name in parent.inherits:
+                    super().error(ErrorType.TYPE_ERROR,
+                                  "Circular inheritance for classes {} and {}"
+                                  .format(checked_class.name, parent.name))
+
+                parent_inheritance = parent.inherits
+
+            # populate inheritance list
+            checked_class.inherits += parent_inheritance
+
+            # validate field types
             for field in checked_class.fields.values():
                 reserved = [
                     InterpreterBase.INT_DEF,
@@ -87,6 +112,7 @@ class Interpreter(InterpreterBase):
                     super().error(ErrorType.TYPE_ERROR,
                                   "Type mismatch with field {}"
                                   .format(field.name))
+            # validate method types
             for method in checked_class.methods.values():
                 reserved = [
                     InterpreterBase.INT_DEF,
@@ -122,10 +148,11 @@ class Interpreter(InterpreterBase):
 
 
 class Class():
-    def __init__(self, name='', fields={}, methods={}):
+    def __init__(self, name='', fields={}, methods={}, inherits=[]):
         self.name = name
         self.fields = fields
         self.methods = methods
+        self.inherits = inherits
 
     def instantiate(self):
         return ClassInstance(self.name, self.fields, self.methods)
@@ -472,11 +499,9 @@ class Statement():
                     if var[0] not in reserved:
                         intr.get_class(var[0])
 
-                # combine scopes, NOT USING UNION in order to preserve object
-                # references so captured variables are updated properly
+                # combine scopes
                 newvars = copy(vars)
-                for var in temp_vars.values():
-                    newvars[var.name] = var
+                newvars |= temp_vars
 
                 # run each statement with the new scope
                 for statement in self.params[1:]:
@@ -627,7 +652,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program.brewin') as program_file:
+    with open('program2.brewin') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
