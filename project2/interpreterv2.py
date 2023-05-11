@@ -460,6 +460,16 @@ class Statement():
                                    "Duplicate let var {}".format(var[1]))
                     temp_vars[var[1]] = Variable(var[0], var[1], var[2], base)
 
+                    # error if type for new variable is not valid
+                    reserved = [
+                        InterpreterBase.INT_DEF,
+                        InterpreterBase.STRING_DEF,
+                        InterpreterBase.BOOL_DEF,
+                        InterpreterBase.NULL_DEF,
+                    ]
+                    if var[0] not in reserved:
+                        intr.get_class(var[0])
+
                 # combine scopes, NOT USING UNION in order to preserve object
                 # references so captured variables are updated properly
                 newvars = copy(vars)

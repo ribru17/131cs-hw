@@ -1,28 +1,42 @@
+(class Node
+ (field Node next null)
+ (field int val 0)
+ (method int get_val () (print "VAL:" val))
+ (method int set_val ((int v)) (begin (set val v) (print v)))
+)
 (class main
   (field string p "J")
   (field bool z true)
   (field bool z2 false)
   (field null q null)
+  (field Node ll null)
   #(field int q3 null)
   (field myclass q2 null)
   (field int sup 18)
   (method string hi ((int r) (int s)) (print s))
   (method int lettest ((myclass hey))
     (begin
-      (print sup)
-      (set sup 88)
-      (print sup)
-    (let ((int sup 5) (string yo "hey")) 
-      (print sup)
-      (set sup 9)
-      (print sup)
-      (print "NEXT.")
-      (print p)
-      (set p "hi")    # should error
-      (print p)
-      (print "over")
-      (set yo "lig")
-      (print yo)
+      (set ll (new Node))
+      (call ll get_val)
+      (call ll set_val 9)
+      (call ll get_val)
+      (call ll set_val 7)
+      (call ll get_val) # TODO: get this working
+#   (let ((int sup 5) (string yo "hey")) 
+#     (print sup)
+#     (set sup 9)
+#     (print sup)
+#     (print "NEXT.")
+#     (print p)
+#     (set p "hi")    # should error
+#     (print p)
+#     (print "over")
+#     (set yo "lig")
+#     (print yo)
+#   )
+    (let ((int sup 5) (blorg yo null)) # TODO: this should fail
+      #(print yo)
+      #(print "END>")
     )
     #(let ((int y 5) )
     #   (print y)		# this prints out 5
@@ -56,9 +70,13 @@
     )
   )
 )
+
 (class myclass
     (method void hi () (print "HI"))
 )
-(class myclass
+(class myclasss
+    (method void hi () (print "HI"))
+)
+(class blorg
     (method void hi () (print "HI"))
 )
