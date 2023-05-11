@@ -176,7 +176,13 @@ class Variable():
         elif var_type == InterpreterBase.NULL_DEF:
             var_type = InterpreterBase.VOID_DEF
         if self.value.value_type != var_type:
-            if self.value.value_type != InterpreterBase.VOID_DEF:
+            # error if wrong class type
+            if self.value.value_type == InterpreterBase.CLASS_DEF:
+                if self.value.value.name != var_type:
+                    base.error(ErrorType.TYPE_ERROR,
+                               "Type mismatch with variable {}".format(name))
+            # error if types don't match and value is not an object nor null
+            elif self.value.value_type != InterpreterBase.VOID_DEF:
                 base.error(ErrorType.TYPE_ERROR,
                            "Type mismatch with variable {}".format(name))
             # `null` can only be assigned to object or null type

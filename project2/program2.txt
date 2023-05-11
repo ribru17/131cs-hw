@@ -7,7 +7,7 @@
   (field myclass q2 null)
   (field int sup 18)
   (method myclass hi () (set p "FF"))
-  (method int lettest ((int hey))
+  (method int lettest ((myclass hey))
     (begin
     (let ((int sup 5) (bool yo true)) 
       (print sup)
@@ -24,7 +24,7 @@
     #(print yo)
     )
   )
-  (method int hit ((int o) (string lig)) (return o))
+  (method int hit ((int o) (myclass lig)) (return o))
   (method void value_or_zero ((int q))
     (begin
       (if (< q 0)
@@ -42,10 +42,14 @@
       #(print (call me hi)) # prints 0
       #(print (call me hit 88)) # prints 0
       #(print z)
-      (print (call me lettest 77))
+      (print (call me lettest null))
+      (print (call me hit 5 (new myclass)))
     )
   )
 )
 (class myclass
+    (method void hi () (print "HI"))
+)
+(class myclasss
     (method void hi () (print "HI"))
 )
