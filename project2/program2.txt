@@ -6,7 +6,7 @@
   #(field int q3 null)
   (field myclass q2 null)
   (field int sup 18)
-  (method string hi ((int r) (int s)) (return s))
+  (method string hi ((int r) (int s)) (print s))
   (method int lettest ((myclass hey))
     (begin
       (print sup)
@@ -59,6 +59,6 @@
 (class myclass
     (method void hi () (print "HI"))
 )
-(class myclasss
+(class myclass
     (method void hi () (print "HI"))
 )

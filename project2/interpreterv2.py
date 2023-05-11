@@ -54,7 +54,7 @@ class Interpreter(InterpreterBase):
                     return
 
             if class_name in self.classes:
-                super().error(ErrorType.TYPE_ERROR,
+                super().error(ErrorType.NAME_ERROR,
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(class_name, fields, methods)
 
