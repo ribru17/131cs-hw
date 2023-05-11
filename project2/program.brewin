@@ -37,7 +37,10 @@
     (let ((int sup 5) (blorg yo null)) # TODO: this should fail
       #(print yo)
       #(print "END>")
+      (call ll set_val 799)
+      (call ll get_val)
     )
+      (call ll get_val)
     #(let ((int y 5) )
     #   (print y)		# this prints out 5
     #)

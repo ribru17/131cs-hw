@@ -162,6 +162,9 @@ class Variable():
     def __init__(self, var_type, name, value, base):
         self.name = name
         self.var_type = var_type
+        self.set_value(value, base)
+
+    def set_value(self, value, base):
         if isinstance(value, Value):
             self.value = value
         else:
@@ -170,6 +173,7 @@ class Variable():
             self.value = Value(value, {}, base)
 
         # checks for all cases except invalid class (to be checked in run)
+        var_type = self.var_type
         if var_type == InterpreterBase.VOID_DEF:
             base.error(ErrorType.TYPE_ERROR,
                        "Invalid variable type {}".format(var_type))
@@ -180,17 +184,18 @@ class Variable():
             if self.value.value_type == InterpreterBase.CLASS_DEF:
                 if self.value.value.name != var_type:
                     base.error(ErrorType.TYPE_ERROR,
-                               "Type mismatch with variable {}".format(name))
+                               "Type mismatch with variable {}".format(
+                                   self.name))
             # error if types don't match and value is not an object nor null
             elif self.value.value_type != InterpreterBase.VOID_DEF:
                 base.error(ErrorType.TYPE_ERROR,
-                           "Type mismatch with variable {}".format(name))
+                           "Type mismatch with variable {}".format(self.name))
             # `null` can only be assigned to object or null type
             elif var_type in [InterpreterBase.INT_DEF,
                               InterpreterBase.BOOL_DEF,
                               InterpreterBase.STRING_DEF,]:
                 base.error(ErrorType.TYPE_ERROR,
-                           "Type mismatch with variable {}".format(name))
+                           "Type mismatch with variable {}".format(self.name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
@@ -427,10 +432,7 @@ class Statement():
                 try:
                     new_value = self.__run_expression(
                         self.params[1], vars, base, intr, me)
-                    current_var = vars[self.params[0]]
-                    vars[self.params[0]] = Variable(
-                        current_var.var_type, current_var.name,
-                        new_value, base)
+                    vars[self.params[0]].set_value(new_value, base)
                     return Value(InterpreterBase.NULL_DEF, vars, base), None
                 except KeyError:
                     base.error(ErrorType.NAME_ERROR,
@@ -625,7 +627,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program2.txt') as program_file:
+    with open('program.brewin') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
