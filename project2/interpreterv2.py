@@ -162,7 +162,8 @@ class Class():
         except IndexError:
             parent = None
 
-        return ClassInstance(self.name, self.fields, self.methods, self.inherits, parent)
+        return ClassInstance(self.name, self.fields, self.methods,
+                             self.inherits, parent)
 
     def __str__(self):
         return (self.name + ' ' + str({'{}:{}'.format(key, val.value) for
