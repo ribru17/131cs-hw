@@ -247,14 +247,7 @@ class Method():
         self.return_type = return_type
         self.statement = statement
 
-    def run(self, fields, arguments, base, intr, me):
-        if len(arguments) != len(self.params):
-            base.error(ErrorType.TYPE_ERROR,
-                       'Wrong number of arguments for {}'.format(self.name))
-        scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
-            k, v) in list(zip(self.params, arguments))}
-        # ~~^ `k` is [var_type, var_name]
-
+    def __run_and_check(self, scope, base, intr, me):
         return_value, return_trap = self.statement.run(
             scope, base, intr, me)
 
@@ -298,6 +291,25 @@ class Method():
                 return Value(default_val, {}, base)
             except KeyError:  # returning a class
                 return Value(InterpreterBase.NULL_DEF, {}, base)
+
+    def run(self, fields, arguments, base, intr, me):
+        # check duplicate params
+        seen_params = set()
+        for [ptype, pname] in self.params:
+            if pname in seen_params:
+                base.error(ErrorType.NAME_ERROR,
+                           "Duplicate parameter {}".format(pname))
+            else:
+                seen_params.add(pname)
+        # check incorrect number of arguments
+        if len(arguments) != len(self.params):
+            base.error(ErrorType.TYPE_ERROR,
+                       'Wrong number of arguments for {}'.format(self.name))
+        scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+            k, v) in list(zip(self.params, arguments))}
+        # ~~^ `k` is [var_type, var_name]
+
+        return self.__run_and_check(scope, base, intr, me)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
