@@ -63,7 +63,7 @@ class Interpreter(InterpreterBase):
             if class_name in self.classes:
                 super().error(ErrorType.NAME_ERROR,
                               "Duplicate class {}".format(class_name))
-            self.classes[class_name] = Class(class_name, fields,
+            self.classes[class_name] = Class(self, class_name, fields,
                                              methods, inherits)
 
         self.__validate_class_types()
@@ -148,14 +148,21 @@ class Interpreter(InterpreterBase):
 
 
 class Class():
-    def __init__(self, name='', fields={}, methods={}, inherits=[]):
+    def __init__(self, intr, name='', fields={}, methods={}, inherits=[]):
+        self.intr = intr
         self.name = name
         self.fields = fields
         self.methods = methods
         self.inherits = inherits
 
     def instantiate(self):
-        return ClassInstance(self.name, self.fields, self.methods)
+        try:
+            parent = self.intr.get_class(self.inherits[0])
+            parent = parent.instantiate()
+        except IndexError:
+            parent = None
+
+        return ClassInstance(self.name, self.fields, self.methods, self.inherits, parent)
 
     def __str__(self):
         return (self.name + ' ' + str({'{}:{}'.format(key, val.value) for
@@ -165,10 +172,12 @@ class Class():
 
 
 class ClassInstance():
-    def __init__(self, name, fields, methods):
+    def __init__(self, name, fields, methods, inherits, parent):
         self.name = deepcopy(name)
         self.fields = deepcopy(fields)
         self.methods = deepcopy(methods)
+        self.inherits = deepcopy(inherits)
+        self.parent = parent
 
     def run_method(self, method_name, params, base, intr):
         try:
@@ -209,7 +218,8 @@ class Variable():
         if self.value.value_type != var_type:
             # error if wrong class type
             if self.value.value_type == InterpreterBase.CLASS_DEF:
-                if self.value.value.name != var_type:
+                if (self.value.value.name != var_type and
+                        var_type not in self.value.value.inherits):
                     base.error(ErrorType.TYPE_ERROR,
                                "Type mismatch with variable {}".format(
                                    self.name))
