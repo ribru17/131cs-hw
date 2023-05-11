@@ -386,6 +386,12 @@ class Statement():
                             x, vars, base, intr, me)
                             for x in self.params[2:]],
                         base, intr)
+                elif self.params[0] == InterpreterBase.SUPER_DEF:
+                    me.parent.run_method(
+                        self.params[1], [self.__run_expression(
+                            x, vars, base, intr, me)
+                            for x in self.params[2:]],
+                        base, intr)
                 else:
                     obj = self.__run_expression(self.params[0],
                                                 vars, base, intr, me)
@@ -636,6 +642,12 @@ class Statement():
                 case InterpreterBase.CALL_DEF:
                     if expr[1] == InterpreterBase.ME_DEF:
                         return me.run_method(
+                            expr[2], [self.__run_expression(
+                                x, vars, base, intr, me)
+                                for x in expr[3:]],
+                            base, intr)
+                    elif expr[1] == InterpreterBase.SUPER_DEF:
+                        return me.parent.run_method(
                             expr[2], [self.__run_expression(
                                 x, vars, base, intr, me)
                                 for x in expr[3:]],

@@ -5,14 +5,14 @@
 (class person inherits ligma
   (field string name "jane")
   (method void set_name ((string n)) (set name n))
-  (method string get_name () (return name))
+  (method string get_name () (print name))
 )
 
 (class student inherits person
   (field int beers 3)
   (method void set_beers ((int g)) (set beers g))
   (method int get_beers () (return beers))
-  (method void check () (print (call super get_name)))
+  (method void check () (call super get_name))
 )
 
 (class main
