@@ -1,6 +1,6 @@
 from intbase import InterpreterBase, ErrorType
 from bparser import BParser
-from copy import deepcopy
+from copy import deepcopy, copy
 
 DEFAULT_VALUES = {
     InterpreterBase.INT_DEF: '0',
@@ -411,12 +411,14 @@ class Statement():
                 return self.__run_expression(self.params[0],
                                              vars, base, intr,
                                              me), InterpreterBase.RETURN_DEF
-            # TODO: throw a type error if trying to set a variable to a value
-            # of incompatible type
             case InterpreterBase.SET_DEF:
                 try:
-                    vars[self.params[0]].value = self.__run_expression(
+                    new_value = self.__run_expression(
                         self.params[1], vars, base, intr, me)
+                    current_var = vars[self.params[0]]
+                    vars[self.params[0]] = Variable(
+                        current_var.var_type, current_var.name,
+                        new_value, base)
                     return Value(InterpreterBase.NULL_DEF, vars, base), None
                 except KeyError:
                     base.error(ErrorType.NAME_ERROR,
@@ -438,6 +440,7 @@ class Statement():
                         self.params[0], vars, base, intr, me)
                 return Value(InterpreterBase.NULL_DEF, vars, base), None
             case InterpreterBase.LET_DEF:
+                # populate the let block variable scope
                 temp_vars = {}
                 for var in self.params[0]:
                     if var[1] in temp_vars.keys():
@@ -445,13 +448,20 @@ class Statement():
                                    "Duplicate let var {}".format(var[1]))
                     temp_vars[var[1]] = Variable(var[0], var[1], var[2], base)
 
+                # combine scopes, NOT USING UNION in order to preserve object
+                # references so captured variables are updated properly
+                newvars = copy(vars)
+                for var in temp_vars.values():
+                    newvars[var.name] = var
+
+                # run each statement with the new scope
                 for statement in self.params[1:]:
                     result, returned = Statement(statement[0],
                                                  statement[1:]).run(
-                        vars | temp_vars, base, intr, me)
+                        newvars, base, intr, me)
                     if returned is not None:
                         return result, returned
-                return Value(InterpreterBase.NULL_DEF, vars, base), None
+                return Value(InterpreterBase.NULL_DEF, newvars, base), None
             case other:
                 base.error(ErrorType.SYNTAX_ERROR,
                            "Unknown statement {}".format(other))
