@@ -691,14 +691,16 @@ class Statement():
                             lhs.value_type == InterpreterBase.CLASS_DEF) and
                             (lhs.value_type == InterpreterBase.VOID_DEF or
                                 lhs.value_type == InterpreterBase.CLASS_DEF)):
-                        print(lhs.value.name, rhs.value.name)
-                        if (lhs.value.name != rhs.value.name and lhs.value.name
-                                not in rhs.value.inherits and rhs.value.name
-                                not in lhs.value.inherits):
-                            base.error(
-                                ErrorType.TYPE_ERROR,
-                                "Incompatible types for equality operation"
-                            )
+                        if (lhs.value_type == rhs.value_type ==
+                                InterpreterBase.CLASS_DEF):
+                            if (lhs.value.name != rhs.value.name and
+                                lhs.value.name
+                                    not in rhs.value.inherits and
+                                    rhs.value.name not in lhs.value.inherits):
+                                base.error(
+                                    ErrorType.TYPE_ERROR,
+                                    "Incompatible types for equality operation"
+                                )
                         if operator == '==':
                             return Value(str(lhs.value == rhs.value).lower(),
                                          vars, base)
