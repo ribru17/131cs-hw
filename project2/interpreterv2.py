@@ -10,6 +10,26 @@ DEFAULT_VALUES = {
 }
 
 
+class TYPE_E(Exception):
+    "Raised for invalid type"
+    pass
+
+
+class NAME_E(Exception):
+    "Raised for invalid name"
+    pass
+
+
+class SYNTAX_E(Exception):
+    "Raised for invalid syntax"
+    pass
+
+
+class FAULT_E(Exception):
+    "Raised for fault / null dereference"
+    pass
+
+
 class Interpreter(InterpreterBase):
     def __init__(self, console_output=True, inp=None, trace_output=False):
         super().__init__(console_output, inp)
@@ -61,15 +81,24 @@ class Interpreter(InterpreterBase):
                     return
 
             if class_name in self.classes:
-                super().error(ErrorType.NAME_ERROR,
+                # I don't know what to do here
+                # https://campuswire.com/c/GCF9D6027/feed/386
+
+                # super().error(ErrorType.NAME_ERROR,
+                super().error(ErrorType.TYPE_ERROR,
                               "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(self, class_name, fields,
                                              methods, inherits)
 
         self.__validate_class_types()
 
-        self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
-            super().MAIN_FUNC_DEF, [], super(), self)
+        try:
+            self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
+                super().MAIN_FUNC_DEF, [], super(), self)
+        except TYPE_E:
+            super().error(ErrorType.TYPE_ERROR)
+        except NAME_E:
+            super().error(ErrorType.NAME_ERROR)
 
     def get_class(self, class_name):
         try:
@@ -143,6 +172,8 @@ class Interpreter(InterpreterBase):
                                       "Type mismatch with param {}"
                                       .format(param_name))
 
+    # def customError(e_type, message):
+
     def __str__(self):
         return str([str(x) for x in self.classes])
 
@@ -182,7 +213,30 @@ class ClassInstance():
 
     def run_method(self, method_name, params, base, intr):
         method, container = self.__get_method(method_name, base)
-        return method.run(container.fields, params, base, intr, container)
+        # return method.run(container.fields, params, base, intr, container)
+        try:
+            return method.run(container.fields, params, base, intr, container)
+        except TYPE_E:
+            if self.parent is None:
+                base.error(
+                    # ErrorType.NAME_ERROR,
+                    ErrorType.TYPE_ERROR,
+                    "No matching function definition found for {}"
+                    .format(method.name))
+            else:
+                return self.parent.run_method(method_name, params, base, intr)
+        # except InvalidVarName:
+        #     base.error(ErrorType.TYPE_ERROR, "Bad name")
+        #     return
+        # except RuntimeError:
+        #     if self.parent is None:
+        #         base.error(
+        #             # ErrorType.NAME_ERROR,
+        #             ErrorType.NAME_ERROR,
+        #             "No matching function definition found for {}"
+        #             .format(method.name))
+        #     else:
+        #         return self.parent.run_method(method_name, params, base, intr)
 
     def __get_method(self, method_name, base):
         """
@@ -312,8 +366,15 @@ class Method():
         # if statement has incorrect return value, throw an error
         if (return_value.value_type != InterpreterBase.VOID_DEF and
                 return_value.value_type != self.return_type):
-            base.error(ErrorType.TYPE_ERROR,
-                       "Invalid return type for {}".format(self.name))
+            # unless it the return type class or derives from it
+            if return_value.value_type == InterpreterBase.CLASS_DEF:
+                if (self.return_type != return_value.value.name and
+                        self.return_type not in return_value.value.inherits):
+                    base.error(ErrorType.TYPE_ERROR,
+                               "Invalid return type for {}".format(self.name))
+            else:
+                base.error(ErrorType.TYPE_ERROR,
+                           "Invalid return type for {}".format(self.name))
 
         # null function always must return null
         if self.return_type == InterpreterBase.NULL_DEF:
@@ -342,6 +403,7 @@ class Method():
                 return Value(InterpreterBase.NULL_DEF, {}, base)
 
     def run(self, fields, arguments, base, intr, me):
+        """Returns the `Value` of the called method"""
         # check duplicate params
         seen_params = set()
         for [ptype, pname] in self.params:
@@ -352,11 +414,27 @@ class Method():
                 seen_params.add(pname)
         # check incorrect number of arguments
         if len(arguments) != len(self.params):
-            base.error(ErrorType.TYPE_ERROR,
-                       'Wrong number of arguments for {}'.format(self.name))
+            raise TYPE_E
+            # base.error(ErrorType.TYPE_ERROR,
+            #            'Wrong number of arguments for {}'.format(self.name))
         scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
             k, v) in list(zip(self.params, arguments))}
         # ~~^ `k` is [var_type, var_name]
+        # # check incorrect number of arguments or wrong arg types
+        # try:
+        #     if len(arguments) != len(self.params):
+        #         base.error(ErrorType.TYPE_ERROR,
+        #                    'Wrong number of arguments for {}'
+        #                    .format(self.name))
+        #     scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+        #         k, v) in list(zip(self.params, arguments))}
+        #     # ~~^ `k` is [var_type, var_name]
+        # except RuntimeError:
+        #     raise InvalidVarName
+        #     # if me.parent is None:
+        #     #     base.error(ErrorType.NAME_ERROR, "Suck")
+        #     # else:
+        #     #     me.parent.run(fields, arguments, base, intr, me.parent)
 
         return self.__run_and_check(scope, base, intr, me)
 
@@ -613,6 +691,14 @@ class Statement():
                             lhs.value_type == InterpreterBase.CLASS_DEF) and
                             (lhs.value_type == InterpreterBase.VOID_DEF or
                                 lhs.value_type == InterpreterBase.CLASS_DEF)):
+                        print(lhs.value.name, rhs.value.name)
+                        if (lhs.value.name != rhs.value.name and lhs.value.name
+                                not in rhs.value.inherits and rhs.value.name
+                                not in lhs.value.inherits):
+                            base.error(
+                                ErrorType.TYPE_ERROR,
+                                "Incompatible types for equality operation"
+                            )
                         if operator == '==':
                             return Value(str(lhs.value == rhs.value).lower(),
                                          vars, base)
@@ -676,12 +762,14 @@ class Statement():
                     base.error(ErrorType.SYNTAX_ERROR,
                                "Unknown operator {}".format(other))
 
+        elif expr == InterpreterBase.ME_DEF:
+            return Value(me, vars, base)
         else:
             return Value(expr, vars, base)
 
 
 if __name__ == '__main__':
-    with open('program2.brewin') as program_file:
+    with open('program4.brewin') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
