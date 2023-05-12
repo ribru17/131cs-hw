@@ -212,15 +212,21 @@ class ClassInstance():
         self.parent = parent
 
     def run_method(self, method_name, params, base, intr):
-        method, container = self.__get_method(method_name, base)
+        method, container = self.get_method(method_name, base)
         # return method.run(container.fields, params, base, intr, container)
         try:
             return method.run(container.fields, params, base, intr, container)
-        except TYPE_E:
+        except RuntimeError as err:
+            print("HERE", err)
+            if 'ErrorType.TYPE_ERROR' in str(err):
+                err_type = ErrorType.TYPE_ERROR
+            elif 'ErrorType.NAME_ERROR' in str(err):
+                err_type = ErrorType.NAME_ERROR
             if self.parent is None:
                 base.error(
+                    # ErrorType.TYPE_ERROR,
                     # ErrorType.NAME_ERROR,
-                    ErrorType.TYPE_ERROR,
+                    err_type,
                     "No matching function definition found for {}"
                     .format(method.name))
             else:
@@ -238,7 +244,7 @@ class ClassInstance():
         #     else:
         #         return self.parent.run_method(method_name, params, base, intr)
 
-    def __get_method(self, method_name, base):
+    def get_method(self, method_name, base):
         """
         Returns (`method`, `pointer to container class`)
         """
@@ -249,7 +255,7 @@ class ClassInstance():
                 base.error(ErrorType.NAME_ERROR,
                            "Unknown method {}".format(method_name))
             else:
-                return self.parent.__get_method(method_name, base)
+                return self.parent.get_method(method_name, base)
 
     def __str__(self):
         return '<Class instance of {}>'.format(self.name)
@@ -272,8 +278,9 @@ class Variable():
         # checks for all cases except invalid class (to be checked in run)
         var_type = self.var_type
         if var_type == InterpreterBase.VOID_DEF:
-            base.error(ErrorType.TYPE_ERROR,
-                       "Invalid variable type {}".format(var_type))
+            raise TYPE_E
+            # base.error(ErrorType.TYPE_ERROR,
+            #            "Invalid variable type {}".format(var_type))
         elif var_type == InterpreterBase.NULL_DEF:
             var_type = InterpreterBase.VOID_DEF
         if self.value.value_type != var_type:
@@ -281,19 +288,22 @@ class Variable():
             if self.value.value_type == InterpreterBase.CLASS_DEF:
                 if (self.value.value.name != var_type and
                         var_type not in self.value.value.inherits):
-                    base.error(ErrorType.TYPE_ERROR,
-                               "Type mismatch with variable {}".format(
-                                   self.name))
+                    raise TYPE_E
+                    # base.error(ErrorType.TYPE_ERROR,
+                    #            "Type mismatch with variable {}".format(
+                    #                self.name))
             # error if types don't match and value is not an object nor null
             elif self.value.value_type != InterpreterBase.VOID_DEF:
-                base.error(ErrorType.TYPE_ERROR,
-                           "Type mismatch with variable {}".format(self.name))
+                raise TYPE_E
+                # base.error(ErrorType.TYPE_ERROR,
+                #            "Type mismatch with variable {}".format(self.name))
             # `null` can only be assigned to object or null type
             elif var_type in [InterpreterBase.INT_DEF,
                               InterpreterBase.BOOL_DEF,
                               InterpreterBase.STRING_DEF,]:
-                base.error(ErrorType.TYPE_ERROR,
-                           "Type mismatch with variable {}".format(self.name))
+                raise TYPE_E
+                # base.error(ErrorType.TYPE_ERROR,
+                #            "Type mismatch with variable {}".format(self.name)
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
@@ -414,27 +424,41 @@ class Method():
                 seen_params.add(pname)
         # check incorrect number of arguments
         if len(arguments) != len(self.params):
-            raise TYPE_E
-            # base.error(ErrorType.TYPE_ERROR,
-            #            'Wrong number of arguments for {}'.format(self.name))
-        scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
-            k, v) in list(zip(self.params, arguments))}
+            # raise TYPE_E
+            # if me.parent is None:
+            base.error(ErrorType.TYPE_ERROR,
+                       'Wrong number of arguments for {}'.format(self.name))
+            # else:
+            #     print("ERE")
+            #     method, container = me.parent.get_method(self.name, base)
+            #     print(container.fields)
+            #     method.run(container.fields, arguments,
+            #                base, intr, container)
+
+        # scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+        #     k, v) in list(zip(self.params, arguments))}
         # ~~^ `k` is [var_type, var_name]
         # # check incorrect number of arguments or wrong arg types
-        # try:
-        #     if len(arguments) != len(self.params):
-        #         base.error(ErrorType.TYPE_ERROR,
-        #                    'Wrong number of arguments for {}'
-        #                    .format(self.name))
-        #     scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
-        #         k, v) in list(zip(self.params, arguments))}
-        #     # ~~^ `k` is [var_type, var_name]
-        # except RuntimeError:
-        #     raise InvalidVarName
-        #     # if me.parent is None:
-        #     #     base.error(ErrorType.NAME_ERROR, "Suck")
-        #     # else:
-        #     #     me.parent.run(fields, arguments, base, intr, me.parent)
+        try:
+            #     if len(arguments) != len(self.params):
+            #         base.error(ErrorType.TYPE_ERROR,
+            #                    'Wrong number of arguments for {}'
+            #                    .format(self.name))
+            scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+                k, v) in list(zip(self.params, arguments))}
+            # ~~^ `k` is [var_type, var_name]
+        except TYPE_E:
+            base.error(ErrorType.NAME_ERROR,
+                       "Invalid argument types for {}".format(self.name)
+                       .format(self.name))
+            # print(fields)
+            # print(me.fields)
+            # if me.parent is None:
+            #     base.error(ErrorType.NAME_ERROR,
+            #                "Invalid argument types for {}".format(self.name))
+            # else:
+            #     me.parent.run(me.parent.fields, arguments,
+            #                   base, intr, me.parent)
 
         return self.__run_and_check(scope, base, intr, me)
 
@@ -771,7 +795,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program4.brewin') as program_file:
+    with open('program2.brewin') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
