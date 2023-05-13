@@ -1,1 +1,1 @@
-So far, lots of known and unknown bugs
+So far, lots of unknown bugs

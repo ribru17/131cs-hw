@@ -217,7 +217,7 @@ class ClassInstance():
         try:
             return method.run(container.fields, params, base, intr, container)
         except RuntimeError as err:
-            print("HERE", err)
+            # print("HERE", err)
             if 'ErrorType.TYPE_ERROR' in str(err):
                 err_type = ErrorType.TYPE_ERROR
             elif 'ErrorType.NAME_ERROR' in str(err):
@@ -426,7 +426,7 @@ class Method():
         if len(arguments) != len(self.params):
             # raise TYPE_E
             # if me.parent is None:
-            base.error(ErrorType.TYPE_ERROR,
+            base.error(ErrorType.NAME_ERROR,
                        'Wrong number of arguments for {}'.format(self.name))
             # else:
             #     print("ERE")

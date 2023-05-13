@@ -1,8 +1,8 @@
 (class yo
-    (method void hi () (print "HI"))
+    (method void f () (print "HI"))
 )
 (class foo inherits yo
- (method void f ((int x)) (print x))
+ (method void f ((int x) (int y) (int z)) (print x))
 )
 (class bar inherits foo
  (method void f ((int x) (int y)) (print x " " y))
@@ -19,8 +19,9 @@
      #(call b f 10 20)   # calls version of f defined in bar
      #(call b f 10 20 "hi")   # calls version of f defined in bar
      #(call me bro "9")
-     (call b f 9 9 9)
+     (call b f  4 4 4 4 )
      #(set b "hi")
+     #(print "hi")
    )
  )
 )
