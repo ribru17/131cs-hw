@@ -1,0 +1,62 @@
+# ensures that member fields are not visible to subclasses
+(class ligma
+    (method void hi () (print "HI"))
+)
+(class hey inherits ligma
+    (method void hi () (print "HI"))
+)
+(class greetings inherits ligma
+    (method void hi () (print "HI"))
+)
+(class Node inherits hey
+  (field Node next null)
+  (field int val 0)
+  (method void getval () (print val))
+  (method Node getnext () (return next))
+  (method void setval ((int v)) (set val v))
+  (method void append ((int v)) (begin
+    (set next (new Node))
+    (call next setval v)
+  ))
+  (method Node getself () (return me))
+)
+
+(class testbase
+    (method void hi () (print "HI"))
+)
+(class testchild inherits testbase
+    (method void hi () (call super hi))
+)
+(class test inherits testbase
+    (method void hi () (call super hi))
+)
+
+(class main
+  (field Node root null)
+  (field Node temp null)
+  (field test tester null)
+  (field testbase testerbase null)
+  (field testchild child null)
+  (method testbase getback ((testbase thing)) (return thing))
+  (method void main () 
+    (begin 
+        # (set root (new Node))
+        # (call root getval)
+        # (call root setval 9)
+        # (call root getval)
+        # (call root append 11)
+        # (call (call root getnext) getval)
+        # (set temp (call root getself) )
+        # (call temp getval)
+        # (set temp (new Node))
+        # (print (== (new greetings) (new hey) )) # TODO: should type error
+        (set tester (new test))
+        (call tester hi)
+        (print (== null null))
+        (set testerbase (new testbase))
+        (print (call me getback 5))
+        #(set child (call me getback (new test)))
+        (print (== (new ligma) (new Node)))
+    )
+  )
+)
