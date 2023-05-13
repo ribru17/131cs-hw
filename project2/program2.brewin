@@ -2,34 +2,31 @@
     (method void hi () (print "HI"))
 )
 (class yo
-    (method void fo () (print "HI"))
+    (method void hi () (print "HI"))
+    (method yo getme () (return me))
 )
 (class foo inherits yo
- (method void fo ((int x) (int y) (int z)) (print x))
+ (method void f ((int x) (int y) (int z)) (print x))
 )
 (class bar inherits foo
- (method void f ((int x) (int y)) (print (== me (new noder))))
+ (method bar getme () (return))
 )
 
 (class main
  (field bar b null)
- (field bar b null)
+ (field yo y null)
+ (field int inty 2)
+ (field string str "")
  (method void bro ((int q)) (print q))
- (method foo test () (return false))
+ (method bar create () (print "created"))
+ (method foo test () (return (new foo)))
  (method void main ()
    (begin
-     (set b (new bar))
-     #(call b f 10)  	# calls version of f defined in foo
-     #(call b f 10 20)   # calls version of f defined in bar
-     #(call b f 10 20 "hi")   # calls version of f defined in bar
-     #(call me bro "9")
-     #(call me test)
-     #(call b f 9 8)
-     #(set b "hi")
-     #(print "hi")
-     #(print (== me me))
-     #(print (== 4 "HI"))
-     (print "ok")
+      (set b (call me create))
+      #(call b hi)
+      #(inputs str)
+      #(print (+ "HELLO " str))
+      (print "yo")
    )
  )
 )
