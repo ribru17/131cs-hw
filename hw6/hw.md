@@ -61,3 +61,50 @@ function and accidentally forget that you need to set up a catcher for it just
 in case. I would say that given all of this the `Optional` is more suitable for
 this use case, as it seems most idiomatic given that the function has only two
 possible states: "has it" and "doesn't have it".
+
+# 3.
+
+## a)
+
+```
+catch 2
+I'm done!
+that's what I say
+Really done!
+```
+
+## b)
+
+```
+catch 1
+hurray!
+I'm done!
+that's what I say
+Really done!
+```
+
+## c)
+
+```
+catch 1
+hurray!
+I'm done!
+that's what I say
+Really done!
+```
+
+## d)
+
+```
+catch 3
+Really done!
+```
+
+## e)
+
+```
+hurray!
+I'm done!
+that's what I say
+Really done!
+```
