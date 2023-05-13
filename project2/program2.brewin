@@ -1,17 +1,21 @@
+(class noder
+    (method void hi () (print "HI"))
+)
 (class yo
-    (method void f () (print "HI"))
+    (method void fo () (print "HI"))
 )
 (class foo inherits yo
- (method void f ((int x) (int y) (int z)) (print x))
+ (method void fo ((int x) (int y) (int z)) (print x))
 )
 (class bar inherits foo
- (method void f ((int x) (int y)) (print x " " y))
+ (method void f ((int x) (int y)) (print (== me (new noder))))
 )
 
 (class main
  (field bar b null)
+ (field bar b null)
  (method void bro ((int q)) (print q))
- (method foo test () (return (new foo)))
+ (method foo test () (return false))
  (method void main ()
    (begin
      (set b (new bar))
@@ -19,10 +23,13 @@
      #(call b f 10 20)   # calls version of f defined in bar
      #(call b f 10 20 "hi")   # calls version of f defined in bar
      #(call me bro "9")
-     (call b f  4 4 4 4 )
+     #(call me test)
+     #(call b f 9 8)
      #(set b "hi")
      #(print "hi")
+     #(print (== me me))
+     #(print (== 4 "HI"))
+     (print "ok")
    )
  )
 )
-
