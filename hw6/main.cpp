@@ -70,10 +70,15 @@ template <typename T> class Kontainer {
 };
 
 int main() {
-    Kontainer<string> *hi = new Kontainer<string>();
-    hi->addVal("hi");
-    hi->addVal("hiiii");
-    hi->addVal("zUP");
+    Kontainer<string> *str_kont = new Kontainer<string>();
+    str_kont->addVal("hi");
+    str_kont->addVal("hiiii");
+    str_kont->addVal("zUP");
+    cout << str_kont->getMin() << endl; // prints "hi";
 
-    cout << hi->getMin();
+    Kontainer<double> *dub_kont = new Kontainer<double>();
+    dub_kont->addVal(6.9);
+    dub_kont->addVal(0.00023);
+    dub_kont->addVal(10000000);
+    cout << dub_kont->getMin() << endl; // prints 0.00023
 }
