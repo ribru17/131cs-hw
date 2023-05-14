@@ -9,25 +9,48 @@ DEFAULT_VALUES = {
     InterpreterBase.VOID_DEF: InterpreterBase.NULL_DEF,
 }
 
+VARIABLE_RESERVED_TYPES = [
+    InterpreterBase.INT_DEF,
+    InterpreterBase.STRING_DEF,
+    InterpreterBase.BOOL_DEF,
+    InterpreterBase.NULL_DEF,
+]
+
+METHOD_RESERVED_TYPES = [
+    InterpreterBase.INT_DEF,
+    InterpreterBase.STRING_DEF,
+    InterpreterBase.BOOL_DEF,
+    InterpreterBase.NULL_DEF,
+    InterpreterBase.VOID_DEF,
+]
+
 
 class TYPE_E(Exception):
-    "Raised for invalid type"
-    pass
+    """Raised for TYPE errors"""
+
+    def __init__(self, message):
+        self.message = message
 
 
 class NAME_E(Exception):
-    "Raised for invalid name"
-    pass
+    """Raised for NAME errors"""
+
+    def __init__(self, message):
+        self.message = message
 
 
 class SYNTAX_E(Exception):
-    "Raised for invalid syntax"
-    pass
+    """Raised for SYNTAX errors"""
+
+    def __init__(self, message):
+        self.message = message
 
 
 class FAULT_E(Exception):
-    "Raised for fault / null dereference"
-    pass
+    """Raised for FAULT errors"""
+
+    def __init__(self, message):
+        self.message = message
 
 
 class Interpreter(InterpreterBase):
@@ -35,17 +58,38 @@ class Interpreter(InterpreterBase):
         super().__init__(console_output, inp)
 
     def run(self, program):
-        result, parsed_program = BParser.parse(program)
-        if result is False:
-            super().error(ErrorType.SYNTAX_ERROR)
-            return
+        try:
+            result, parsed_program = BParser.parse(program)
+            if result is False:
+                raise SYNTAX_E('Program parsed incorrectly')
 
-        # track classes
+            self.__track_classes(parsed_program)
+
+            self.__validate_class_types()
+
+            self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
+                super().MAIN_FUNC_DEF, [], self)
+        except TYPE_E as err:
+            super().error(ErrorType.TYPE_ERROR, err.message)
+        except NAME_E as err:
+            super().error(ErrorType.NAME_ERROR, err.message)
+        except SYNTAX_E as err:
+            super().error(ErrorType.SYNTAX_ERROR, err.message)
+        except FAULT_E as err:
+            super().error(ErrorType.FAULT_ERROR, err.message)
+
+    def get_class(self, class_name):
+        try:
+            return self.classes[class_name]
+        except KeyError:
+            raise TYPE_E("Unknown class {}".format(class_name))
+
+    def __track_classes(self, parsed_program):
         self.classes = {}
         for class_def in parsed_program:
             if class_def[0] != InterpreterBase.CLASS_DEF:
-                super().error(ErrorType.SYNTAX_ERROR)
-                return
+                raise SYNTAX_E('Top level definition must be method')
+
             class_name = class_def[1]
 
             # populate fields and classes
@@ -61,51 +105,27 @@ class Interpreter(InterpreterBase):
             for item in class_def[check_index:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
                     if item[2] in fields:
-                        super().error(ErrorType.NAME_ERROR,
-                                      "Duplicate field {}".format(item[2]))
+                        raise NAME_E("Duplicate field {}".format(item[2]))
 
                     fields[item[2]] = Variable(
-                        item[1], item[2], item[3], super())
+                        item[1], item[2], item[3])
 
                 elif item[0] == InterpreterBase.METHOD_DEF:
                     if item[2] in methods:
-                        super().error(ErrorType.NAME_ERROR,
-                                      "Duplicate method {}".format(item[2]))
+                        raise NAME_E("Duplicate method {}".format(item[2]))
 
                     methods[item[2]] = Method(item[1], item[2], item[3],
                                               Statement(item[4][0],
                                                         item[4][1:]))
 
                 else:
-                    super().error(ErrorType.SYNTAX_ERROR)
-                    return
+                    raise SYNTAX_E("Class member must be a field or method")
 
             if class_name in self.classes:
-                # I don't know what to do here
-                # https://campuswire.com/c/GCF9D6027/feed/386
+                raise TYPE_E("Duplicate class {}".format(class_name))
 
-                # super().error(ErrorType.NAME_ERROR,
-                super().error(ErrorType.TYPE_ERROR,
-                              "Duplicate class {}".format(class_name))
             self.classes[class_name] = Class(self, class_name, fields,
                                              methods, inherits)
-
-        self.__validate_class_types()
-
-        try:
-            self.get_class(super().MAIN_CLASS_DEF).instantiate().run_method(
-                super().MAIN_FUNC_DEF, [], super(), self)
-        except TYPE_E:
-            super().error(ErrorType.TYPE_ERROR)
-        except NAME_E:
-            super().error(ErrorType.NAME_ERROR)
-
-    def get_class(self, class_name):
-        try:
-            return self.classes[class_name]
-        except KeyError:
-            super().error(ErrorType.TYPE_ERROR,
-                          "Unknown class {}".format(class_name))
 
     def __validate_class_types(self):
         # make sure fields and methods of a class type have a real class type
@@ -119,9 +139,8 @@ class Interpreter(InterpreterBase):
                 parent = self.get_class(class_name)
                 # check for circular inheritance
                 if checked_class.name in parent.inherits:
-                    super().error(ErrorType.TYPE_ERROR,
-                                  "Circular inheritance for classes {} and {}"
-                                  .format(checked_class.name, parent.name))
+                    raise TYPE_E("Circular inheritance for classes {} and {}"
+                                 .format(checked_class.name, parent.name))
 
                 parent_inheritance = parent.inherits
 
@@ -130,49 +149,25 @@ class Interpreter(InterpreterBase):
 
             # validate field types
             for field in checked_class.fields.values():
-                reserved = [
-                    InterpreterBase.INT_DEF,
-                    InterpreterBase.STRING_DEF,
-                    InterpreterBase.BOOL_DEF,
-                    InterpreterBase.NULL_DEF,
-                ]
                 if (field.var_type not in class_names and
-                        field.var_type not in reserved):
-                    super().error(ErrorType.TYPE_ERROR,
-                                  "Type mismatch with field {}"
-                                  .format(field.name))
+                        field.var_type not in VARIABLE_RESERVED_TYPES):
+                    raise TYPE_E("Type mismatch with field {}"
+                                 .format(field.name))
             # validate method types
             for method in checked_class.methods.values():
-                reserved = [
-                    InterpreterBase.INT_DEF,
-                    InterpreterBase.STRING_DEF,
-                    InterpreterBase.BOOL_DEF,
-                    InterpreterBase.NULL_DEF,
-                    InterpreterBase.VOID_DEF,
-                ]
                 if (method.return_type not in class_names and
-                        method.return_type not in reserved):
-                    super().error(ErrorType.TYPE_ERROR,
-                                  "Type mismatch with method {}"
-                                  .format(method.name))
+                        method.return_type not in METHOD_RESERVED_TYPES):
+                    raise TYPE_E("Type mismatch with method {}"
+                                 .format(method.name))
 
                 # method return type passed check, now to check parameters
                 for param in method.params:
                     param_type = param[0]
                     param_name = param[1]
-                    reserved = [
-                        InterpreterBase.INT_DEF,
-                        InterpreterBase.STRING_DEF,
-                        InterpreterBase.BOOL_DEF,
-                        InterpreterBase.NULL_DEF,
-                    ]
                     if (param_type not in class_names and
-                            param_type not in reserved):
-                        super().error(ErrorType.TYPE_ERROR,
-                                      "Type mismatch with param {}"
-                                      .format(param_name))
-
-    # def customError(e_type, message):
+                            param_type not in VARIABLE_RESERVED_TYPES):
+                        raise TYPE_E("Type mismatch with param {}"
+                                     .format(param_name))
 
     def __str__(self):
         return str([str(x) for x in self.classes])
@@ -211,40 +206,18 @@ class ClassInstance():
         self.inherits = deepcopy(inherits)
         self.parent = parent
 
-    def run_method(self, method_name, params, base, intr):
-        method, container = self.get_method(method_name, base)
-        # return method.run(container.fields, params, base, intr, container)
+    def run_method(self, method_name, params, intr):
+        method, container = self.get_method(method_name)
         try:
-            return method.run(container.fields, params, base, intr, container)
-        except RuntimeError as err:
-            print("HERE", err)
-            if 'ErrorType.TYPE_ERROR' in str(err):
-                err_type = ErrorType.TYPE_ERROR
-            elif 'ErrorType.NAME_ERROR' in str(err):
-                err_type = ErrorType.NAME_ERROR
+            return method.run(container.fields, params, intr, container)
+        except NAME_E:
             if self.parent is None:
-                base.error(
-                    # ErrorType.TYPE_ERROR,
-                    # ErrorType.NAME_ERROR,
-                    err_type,
-                    "No matching function definition found for {}"
-                    .format(method.name))
+                raise NAME_E("No matching function definition found for {}"
+                             .format(method.name))
             else:
-                return self.parent.run_method(method_name, params, base, intr)
-        # except InvalidVarName:
-        #     base.error(ErrorType.TYPE_ERROR, "Bad name")
-        #     return
-        # except RuntimeError:
-        #     if self.parent is None:
-        #         base.error(
-        #             # ErrorType.NAME_ERROR,
-        #             ErrorType.NAME_ERROR,
-        #             "No matching function definition found for {}"
-        #             .format(method.name))
-        #     else:
-        #         return self.parent.run_method(method_name, params, base, intr)
+                return self.parent.run_method(method_name, params, intr)
 
-    def get_method(self, method_name, base):
+    def get_method(self, method_name):
         """
         Returns (`method`, `pointer to container class`)
         """
@@ -252,35 +225,32 @@ class ClassInstance():
             return self.methods[method_name], self
         except KeyError:
             if self.parent is None:
-                base.error(ErrorType.NAME_ERROR,
-                           "Unknown method {}".format(method_name))
+                raise NAME_E("Unknown method {}".format(method_name))
             else:
-                return self.parent.get_method(method_name, base)
+                return self.parent.get_method(method_name)
 
     def __str__(self):
         return '<Class instance of {}>'.format(self.name)
 
 
 class Variable():
-    def __init__(self, var_type, name, value, base):
+    def __init__(self, var_type, name, value):
         self.name = name
         self.var_type = var_type
-        self.set_value(value, base)
+        self.set_value(value)
 
-    def set_value(self, value, base):
+    def set_value(self, value):
         if isinstance(value, Value):
             self.value = value
         else:
             # use empty dict for fields because we cannot
             # initially set a field to a variable
-            self.value = Value(value, {}, base)
+            self.value = Value(value, {})
 
         # checks for all cases except invalid class (to be checked in run)
         var_type = self.var_type
         if var_type == InterpreterBase.VOID_DEF:
-            raise TYPE_E
-            # base.error(ErrorType.TYPE_ERROR,
-            #            "Invalid variable type {}".format(var_type))
+            raise TYPE_E("Invalid variable type {}".format(var_type))
         elif var_type == InterpreterBase.NULL_DEF:
             var_type = InterpreterBase.VOID_DEF
         if self.value.value_type != var_type:
@@ -288,29 +258,25 @@ class Variable():
             if self.value.value_type == InterpreterBase.CLASS_DEF:
                 if (self.value.value.name != var_type and
                         var_type not in self.value.value.inherits):
-                    raise TYPE_E
-                    # base.error(ErrorType.TYPE_ERROR,
-                    #            "Type mismatch with variable {}".format(
-                    #                self.name))
+                    raise TYPE_E("Type mismatch with variable {}"
+                                 .format(self.name))
             # error if types don't match and value is not an object nor null
             elif self.value.value_type != InterpreterBase.VOID_DEF:
-                raise TYPE_E
-                # base.error(ErrorType.TYPE_ERROR,
-                #            "Type mismatch with variable {}".format(self.name))
+                raise TYPE_E("Type mismatch with variable {}"
+                             .format(self.name))
             # `null` can only be assigned to object or null type
             elif var_type in [InterpreterBase.INT_DEF,
                               InterpreterBase.BOOL_DEF,
                               InterpreterBase.STRING_DEF,]:
-                raise TYPE_E
-                # base.error(ErrorType.TYPE_ERROR,
-                #            "Type mismatch with variable {}".format(self.name)
+                raise TYPE_E("Type mismatch with variable {}"
+                             .format(self.name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
 
 
 class Value():
-    def __init__(self, value, fields, base):
+    def __init__(self, value, fields):
         if value == InterpreterBase.TRUE_DEF:
             self.value = True
             self.value_type = InterpreterBase.BOOL_DEF
@@ -332,7 +298,7 @@ class Value():
                 self.value_type = InterpreterBase.INT_DEF
             except ValueError:  # otherwise it is a variable
                 if value[0] != '_' and not value[0].isalpha():
-                    base.error(ErrorType.SYNTAX_ERROR)
+                    raise SYNTAX_E("Invalid variable name")
 
                 # assign value from given variable list
                 try:
@@ -340,14 +306,10 @@ class Value():
                     self.value_type = fields[value].value.value_type
                 except KeyError:
                     # var doesn't exist
-                    base.error(
-                        ErrorType.NAME_ERROR,
-                        "Unknown variable {}".format(value))
+                    raise NAME_E("Unknown variable {}".format(value))
                 except TypeError:
                     # cannot initialize var with other var!
-                    base.error(
-                        ErrorType.TYPE_ERROR,
-                        "Field must be initialized with a constant")
+                    raise TYPE_E("Field must be initialized with a constant")
 
     def __str__(self):
         return self.value_type + ' ' + str(self.value)
@@ -360,19 +322,18 @@ class Method():
         self.return_type = return_type
         self.statement = statement
 
-    def __run_and_check(self, scope, base, intr, me):
+    def __run_and_check(self, scope, intr, me):
         return_value, return_trap = self.statement.run(
-            scope, base, intr, me)
+            scope, intr, me)
 
         # void functions cannot return a value
         if self.return_type == InterpreterBase.VOID_DEF:
             if (return_trap is not None and
                     return_trap is not InterpreterBase.VOID_DEF):
-                base.error(ErrorType.TYPE_ERROR,
-                           "Void function cannot return a value")
+                raise TYPE_E("Void function cannot return a value")
             else:
                 return Value(DEFAULT_VALUES[InterpreterBase.VOID_DEF],
-                             {}, base)
+                             {})
         # if statement has incorrect return value, throw an error
         if (return_value.value_type != InterpreterBase.VOID_DEF and
                 return_value.value_type != self.return_type):
@@ -380,11 +341,10 @@ class Method():
             if return_value.value_type == InterpreterBase.CLASS_DEF:
                 if (self.return_type != return_value.value.name and
                         self.return_type not in return_value.value.inherits):
-                    base.error(ErrorType.TYPE_ERROR,
-                               "Invalid return type for {}".format(self.name))
+                    raise TYPE_E("Invalid return type for {}"
+                                 .format(self.name))
             else:
-                base.error(ErrorType.TYPE_ERROR,
-                           "Invalid return type for {}".format(self.name))
+                raise TYPE_E("Invalid return type for {}".format(self.name))
 
         # null function always must return null
         if self.return_type == InterpreterBase.NULL_DEF:
@@ -396,71 +356,44 @@ class Method():
             if return_trap == InterpreterBase.VOID_DEF:
                 try:  # returning a primitive?
                     default_val = DEFAULT_VALUES[self.return_type]
-                    return Value(default_val, {}, base)
+                    return Value(default_val, {})
                 except KeyError:  # returning a class
-                    return Value(InterpreterBase.NULL_DEF, {}, base)
+                    return Value(InterpreterBase.NULL_DEF, {})
             else:
                 # only perform type conversions for booleans?
                 # this weird behavior follows the barista implementation
                 if self.return_type == InterpreterBase.BOOL_DEF:
-                    return Value(InterpreterBase.FALSE_DEF, {}, base)
+                    return Value(InterpreterBase.FALSE_DEF, {})
                 return return_value
         else:
             try:  # returning a primitive?
                 default_val = DEFAULT_VALUES[self.return_type]
-                return Value(default_val, {}, base)
+                return Value(default_val, {})
             except KeyError:  # returning a class
-                return Value(InterpreterBase.NULL_DEF, {}, base)
+                return Value(InterpreterBase.NULL_DEF, {})
 
-    def run(self, fields, arguments, base, intr, me):
+    def run(self, fields, arguments, intr, me):
         """Returns the `Value` of the called method"""
         # check duplicate params
         seen_params = set()
         for [ptype, pname] in self.params:
             if pname in seen_params:
-                base.error(ErrorType.NAME_ERROR,
-                           "Duplicate parameter {}".format(pname))
+                raise NAME_E("Duplicate parameter {}".format(pname))
             else:
                 seen_params.add(pname)
         # check incorrect number of arguments
         if len(arguments) != len(self.params):
-            # raise TYPE_E
-            # if me.parent is None:
-            base.error(ErrorType.TYPE_ERROR,
-                       'Wrong number of arguments for {}'.format(self.name))
-            # else:
-            #     print("ERE")
-            #     method, container = me.parent.get_method(self.name, base)
-            #     print(container.fields)
-            #     method.run(container.fields, arguments,
-            #                base, intr, container)
+            raise NAME_E("Wrong number of arguments for {}".format(self.name))
 
-        # scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
-        #     k, v) in list(zip(self.params, arguments))}
-        # ~~^ `k` is [var_type, var_name]
-        # # check incorrect number of arguments or wrong arg types
+        # check incorrect number of arguments or wrong arg types
         try:
-            #     if len(arguments) != len(self.params):
-            #         base.error(ErrorType.TYPE_ERROR,
-            #                    'Wrong number of arguments for {}'
-            #                    .format(self.name))
-            scope = fields | {k[1]: Variable(k[0], k[1], v, base) for (
+            scope = fields | {k[1]: Variable(k[0], k[1], v) for (
                 k, v) in list(zip(self.params, arguments))}
             # ~~^ `k` is [var_type, var_name]
         except TYPE_E:
-            base.error(ErrorType.NAME_ERROR,
-                       "Invalid argument types for {}".format(self.name)
-                       .format(self.name))
-            # print(fields)
-            # print(me.fields)
-            # if me.parent is None:
-            #     base.error(ErrorType.NAME_ERROR,
-            #                "Invalid argument types for {}".format(self.name))
-            # else:
-            #     me.parent.run(me.parent.fields, arguments,
-            #                   base, intr, me.parent)
+            raise NAME_E("Invalid argument types for {}".format(self.name))
 
-        return self.__run_and_check(scope, base, intr, me)
+        return self.__run_and_check(scope, intr, me)
 
     def __str__(self):
         return self.name + ' ' + str(self.params) + ' ' + str(self.statement)
@@ -471,7 +404,7 @@ class Statement():
         self.statement_type = statement_type
         self.params = params
 
-    def run(self, vars, base, intr, me):
+    def run(self, vars, intr, me):
         """
         Returns `(val, return_trap)` where `val` is the value returned from
         the statement and `return_trap` is `None` if no value is explicitly
@@ -482,87 +415,79 @@ class Statement():
                 for statement in self.params:
                     result, returned = Statement(statement[0],
                                                  statement[1:]).run(
-                        vars, base, intr, me)
+                        vars, intr, me)
                     if returned is not None:
                         return result, returned
 
-                return Value(InterpreterBase.NULL_DEF, vars, base), None
+                return Value(InterpreterBase.NULL_DEF, vars), None
             case InterpreterBase.CALL_DEF:
                 if self.params[0] == InterpreterBase.ME_DEF:
                     me.run_method(
                         self.params[1], [self.__run_expression(
-                            x, vars, base, intr, me)
+                            x, vars, intr, me)
                             for x in self.params[2:]],
-                        base, intr)
+                        intr)
                 elif self.params[0] == InterpreterBase.SUPER_DEF:
                     me.parent.run_method(
                         self.params[1], [self.__run_expression(
-                            x, vars, base, intr, me)
+                            x, vars, intr, me)
                             for x in self.params[2:]],
-                        base, intr)
+                        intr)
                 else:
                     obj = self.__run_expression(self.params[0],
-                                                vars, base, intr, me)
+                                                vars, intr, me)
                     if isinstance(obj.value, type(None)):
-                        base.error(ErrorType.FAULT_ERROR,
-                                   "Tried to dereference null object")
+                        raise FAULT_E("Tried to dereference null object")
                     if obj.value_type != InterpreterBase.CLASS_DEF:
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Can only call methods on class object")
+                        raise TYPE_E("Can only call methods on class object")
                     obj.value.run_method(
                         self.params[1], [self.__run_expression(
-                            x, vars, base, intr, me)
+                            x, vars, intr, me)
                             for x in self.params[2:]],
-                        base, intr)
+                        intr)
                 # a call STATEMENT will always return null,
                 # unlike call expression
-                return Value(InterpreterBase.NULL_DEF, vars, base), None
+                return Value(InterpreterBase.NULL_DEF, vars), None
             case InterpreterBase.IF_DEF:
                 condition = self.__run_expression(
-                    self.params[0], vars, base, intr, me)
+                    self.params[0], vars, intr, me)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
-                    base.error(ErrorType.TYPE_ERROR,
-                               "non-boolean if condition")
+                    raise TYPE_E("Non-boolean if condition")
 
                 if condition.value is True:
                     return Statement(self.params[1][0],
                                      self.params[1][1:]).run(
-                        vars, base, intr, me)
+                        vars, intr, me)
                 else:
                     if len(self.params) < 3:
                         return Value(InterpreterBase.NULL_DEF,
-                                     vars, base), None
+                                     vars), None
                     elif len(self.params) == 3:
                         return Statement(self.params[2][0],
                                          self.params[2][1:]).run(
-                            vars, base, intr, me)
+                            vars, intr, me)
                     else:
-                        base.error(
-                            ErrorType.SYNTAX_ERROR, "Too many `if` branches")
+                        raise SYNTAX_E("Too many `if` branches")
 
             case InterpreterBase.INPUT_INT_DEF:
-                input = base.get_input()
+                input = intr.get_input()
                 try:
-                    vars[self.params[0]].value = Value(input, vars, base)
-                    return Value(InterpreterBase.NULL_DEF, vars, base), None
+                    vars[self.params[0]].value = Value(input, vars)
+                    return Value(InterpreterBase.NULL_DEF, vars), None
                 except KeyError:
-                    base.error(
-                        ErrorType.NAME_ERROR,
-                        "Unknown variable {}".format(self.params[0]))
+                    raise NAME_E("Unknown variable {}".format(self.params[0]))
             case InterpreterBase.INPUT_STRING_DEF:
-                input = base.get_input()
+                input = intr.get_input()
                 try:
                     vars[self.params[0]].value = Value(
-                        '"{}"'.format(input), vars, base)
-                    return Value(InterpreterBase.NULL_DEF, vars, base), None
+                        '"{}"'.format(input), vars)
+                    return Value(InterpreterBase.NULL_DEF, vars), None
                 except KeyError:
-                    base.error(
-                        ErrorType.NAME_ERROR,
-                        "Unknown variable {}".format(self.params[0]))
+                    raise NAME_E("Unknown variable {}".format(self.params[0]))
             case InterpreterBase.PRINT_DEF:
                 out_string = ''
                 for param in self.params:
-                    value = self.__run_expression(param, vars, base, intr, me)
+                    value = self.__run_expression(param, vars, intr, me)
                     if value.value_type == InterpreterBase.BOOL_DEF:
                         value = (InterpreterBase.TRUE_DEF if value.value
                                  else InterpreterBase.FALSE_DEF)
@@ -570,58 +495,49 @@ class Statement():
                         value = value.value
                     out_string += str(value)
 
-                base.output(out_string)
-                return Value(InterpreterBase.NULL_DEF, vars, base), None
+                intr.output(out_string)
+                return Value(InterpreterBase.NULL_DEF, vars), None
             case InterpreterBase.RETURN_DEF:
                 if len(self.params) == 0:
                     return Value(InterpreterBase.NULL_DEF,
-                                 vars, base), InterpreterBase.VOID_DEF
+                                 vars), InterpreterBase.VOID_DEF
 
                 return self.__run_expression(self.params[0],
-                                             vars, base, intr,
+                                             vars, intr,
                                              me), InterpreterBase.RETURN_DEF
             case InterpreterBase.SET_DEF:
                 try:
                     new_value = self.__run_expression(
-                        self.params[1], vars, base, intr, me)
-                    vars[self.params[0]].set_value(new_value, base)
-                    return Value(InterpreterBase.NULL_DEF, vars, base), None
+                        self.params[1], vars, intr, me)
+                    vars[self.params[0]].set_value(new_value)
+                    return Value(InterpreterBase.NULL_DEF, vars), None
                 except KeyError:
-                    base.error(ErrorType.NAME_ERROR,
-                               "Unknown variable {}".format(self.params[0]))
+                    raise NAME_E("Unknown variable {}".format(self.params[0]))
             case InterpreterBase.WHILE_DEF:
                 condition = self.__run_expression(
-                    self.params[0], vars, base, intr, me)
+                    self.params[0], vars, intr, me)
                 if condition.value_type != InterpreterBase.BOOL_DEF:
-                    base.error(
-                        ErrorType.TYPE_ERROR, "Non-boolean while condition")
+                    raise TYPE_E("Non-boolean while condition")
                 while condition.value is True:
                     for statement in self.params[1:]:
                         result, returned = Statement(statement[0],
                                                      statement[1:]).run(
-                            vars, base, intr, me)
+                            vars, intr, me)
                         if returned is not None:
                             return result, returned
                     condition = self.__run_expression(
-                        self.params[0], vars, base, intr, me)
-                return Value(InterpreterBase.NULL_DEF, vars, base), None
+                        self.params[0], vars, intr, me)
+                return Value(InterpreterBase.NULL_DEF, vars), None
             case InterpreterBase.LET_DEF:
                 # populate the let block variable scope
                 temp_vars = {}
                 for var in self.params[0]:
                     if var[1] in temp_vars.keys():
-                        base.error(ErrorType.NAME_ERROR,
-                                   "Duplicate let var {}".format(var[1]))
-                    temp_vars[var[1]] = Variable(var[0], var[1], var[2], base)
+                        raise NAME_E("Duplicate let var {}".format(var[1]))
+                    temp_vars[var[1]] = Variable(var[0], var[1], var[2])
 
                     # error if type for new variable is not valid
-                    reserved = [
-                        InterpreterBase.INT_DEF,
-                        InterpreterBase.STRING_DEF,
-                        InterpreterBase.BOOL_DEF,
-                        InterpreterBase.NULL_DEF,
-                    ]
-                    if var[0] not in reserved:
+                    if var[0] not in VARIABLE_RESERVED_TYPES:
                         intr.get_class(var[0])
 
                 # combine scopes
@@ -632,85 +548,80 @@ class Statement():
                 for statement in self.params[1:]:
                     result, returned = Statement(statement[0],
                                                  statement[1:]).run(
-                        newvars, base, intr, me)
+                        newvars, intr, me)
                     if returned is not None:
                         return result, returned
-                return Value(InterpreterBase.NULL_DEF, newvars, base), None
+                return Value(InterpreterBase.NULL_DEF, newvars), None
             case other:
-                base.error(ErrorType.SYNTAX_ERROR,
-                           "Unknown statement {}".format(other))
+                raise SYNTAX_E("Unknown statement {}".format(other))
 
-    def __run_expression(self, expr, vars, base, intr, me):
+    def __run_expression(self, expr, vars, intr, me):
         if isinstance(expr, list):
             operator = expr[0]
             match operator:
                 case '+':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
-                    rhs = self.__run_expression(expr[2], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
+                    rhs = self.__run_expression(expr[2], vars, intr, me)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
-                        return Value(str(lhs.value + rhs.value), vars, base)
+                        return Value(str(lhs.value + rhs.value), vars)
                     elif (lhs.value_type == InterpreterBase.STRING_DEF and
                           rhs.value_type == InterpreterBase.STRING_DEF):
                         return Value('"{}"'.format(lhs.value + rhs.value),
-                                     vars, base)
+                                     vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Can only add two ints or two strings")
+                        raise TYPE_E("Can only add two ints or two strings")
                 case '-' | '*' | '/' | '%':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
-                    rhs = self.__run_expression(expr[2], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
+                    rhs = self.__run_expression(expr[2], vars, intr, me)
 
                     if not (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Must perform this operation on two ints")
+                        raise TYPE_E("Must perform arithmetic on two ints")
 
                     return Value(str(int(
                         eval(str(lhs.value) +
                              operator +
-                             str(rhs.value)))), vars, base)
+                             str(rhs.value)))), vars)
                 case '<' | '<=' | '>' | '>=':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
-                    rhs = self.__run_expression(expr[2], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
+                    rhs = self.__run_expression(expr[2], vars, intr, me)
 
                     if (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     elif (lhs.value_type == InterpreterBase.STRING_DEF and
                             rhs.value_type == InterpreterBase.STRING_DEF):
                         return Value(str(eval(
                             '"{}"{}"{}"'.format(lhs.value,
                                                 operator, rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     else:
-                        base.error(
-                            ErrorType.TYPE_ERROR,
-                            "Must perform this operation\
-                            on two ints or two strings")
+                        raise TYPE_E("Can only use the notion of greater than\
+                                     or less than on strings and ints")
                 case '==' | '!=':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
-                    rhs = self.__run_expression(expr[2], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
+                    rhs = self.__run_expression(expr[2], vars, intr, me)
 
                     if (lhs.value_type == InterpreterBase.STRING_DEF and
                             rhs.value_type == InterpreterBase.STRING_DEF):
                         return Value(str(eval(
                             '"{}"{}"{}"'.format(lhs.value,
                                                 operator, rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     elif (lhs.value_type == InterpreterBase.INT_DEF and
                             rhs.value_type == InterpreterBase.INT_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     elif (lhs.value_type == InterpreterBase.BOOL_DEF and
                             rhs.value_type == InterpreterBase.BOOL_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     elif ((lhs.value_type == InterpreterBase.VOID_DEF or
                             lhs.value_type == InterpreterBase.CLASS_DEF) and
                             (lhs.value_type == InterpreterBase.VOID_DEF or
@@ -721,77 +632,72 @@ class Statement():
                                 lhs.value.name
                                     not in rhs.value.inherits and
                                     rhs.value.name not in lhs.value.inherits):
-                                base.error(
-                                    ErrorType.TYPE_ERROR,
+                                raise TYPE_E(
                                     "Incompatible types for equality operation"
                                 )
                         if operator == '==':
                             return Value(str(lhs.value == rhs.value).lower(),
-                                         vars, base)
+                                         vars)
                         else:
                             return Value(str(lhs.value != rhs.value).lower(),
-                                         vars, base)
+                                         vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Incompatible types for equality operation")
+                        raise TYPE_E(
+                            "Incompatible types for equality operation")
                 case '&' | '|':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
-                    rhs = self.__run_expression(expr[2], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
+                    rhs = self.__run_expression(expr[2], vars, intr, me)
 
                     if (lhs.value_type == InterpreterBase.BOOL_DEF and
                             rhs.value_type == InterpreterBase.BOOL_DEF):
                         return Value(str(eval(str(lhs.value) + operator +
                                               str(rhs.value))).lower(),
-                                     vars, base)
+                                     vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Both operands must be booleans")
+                        raise TYPE_E("Both operands must be booleans")
                 case '!':
-                    lhs = self.__run_expression(expr[1], vars, base, intr, me)
+                    lhs = self.__run_expression(expr[1], vars, intr, me)
                     if lhs.value_type == InterpreterBase.BOOL_DEF:
-                        return Value(str(not lhs.value).lower(), vars, base)
+                        return Value(str(not lhs.value).lower(), vars)
                     else:
-                        base.error(ErrorType.TYPE_ERROR,
-                                   "Can only perform `not` on a boolean")
+                        raise TYPE_E("Can only perform `not` on a boolean")
                 case InterpreterBase.NEW_DEF:
                     class_name = expr[1]
                     new_instance = intr.get_class(class_name).instantiate()
-                    return Value(new_instance, vars, base)
+                    return Value(new_instance, vars)
                 case InterpreterBase.CALL_DEF:
                     if expr[1] == InterpreterBase.ME_DEF:
                         return me.run_method(
                             expr[2], [self.__run_expression(
-                                x, vars, base, intr, me)
+                                x, vars, intr, me)
                                 for x in expr[3:]],
-                            base, intr)
+                            intr)
                     elif expr[1] == InterpreterBase.SUPER_DEF:
                         return me.parent.run_method(
                             expr[2], [self.__run_expression(
-                                x, vars, base, intr, me)
+                                x, vars, intr, me)
                                 for x in expr[3:]],
-                            base, intr)
+                            intr)
                     else:
                         obj = self.__run_expression(
-                            expr[1], vars, base, intr, me)
+                            expr[1], vars, intr, me)
                         if isinstance(obj.value, type(None)):
-                            base.error(ErrorType.FAULT_ERROR,
-                                       "Tried to dereference null object")
+                            raise FAULT_E("Tried to dereference null object")
                         if obj.value_type != InterpreterBase.CLASS_DEF:
-                            base.error(ErrorType.TYPE_ERROR,
-                                       "Can only call methods on class object")
+                            raise TYPE_E(
+                                "Can only call methods on class object")
                         return obj.value.run_method(
                             expr[2], [self.__run_expression(
-                                x, vars, base, intr, me)
+                                x, vars, intr, me)
                                 for x in expr[3:]],
-                            base, intr)
+                            intr)
                 case other:
-                    base.error(ErrorType.SYNTAX_ERROR,
-                               "Unknown operator {}".format(other))
+                    raise SYNTAX_E("Unknown operator {}".format(other))
 
         elif expr == InterpreterBase.ME_DEF:
-            return Value(me, vars, base)
+            return Value(me, vars)
         else:
-            return Value(expr, vars, base)
+            return Value(expr, vars)
 
 
 if __name__ == '__main__':
