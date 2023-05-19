@@ -108,7 +108,7 @@ class Interpreter(InterpreterBase):
                         raise NAME_E("Duplicate field {}".format(item[2]))
 
                     fields[item[2]] = Variable(
-                        item[1], item[2], item[3])
+                        item[1], item[2], item[3], self)
 
                 elif item[0] == InterpreterBase.METHOD_DEF:
                     if item[2] in methods:
@@ -206,16 +206,18 @@ class ClassInstance():
         self.inherits = deepcopy(inherits)
         self.parent = parent
 
-    def run_method(self, method_name, params, intr):
+    def run_method(self, method_name, params, intr, me=None):
+        if me is None:
+            me = self
         method, container = self.get_method(method_name)
         try:
-            return method.run(container.fields, params, intr, container)
+            return method.run(container.fields, params, intr, me)
         except NAME_E:
             if self.parent is None:
                 raise NAME_E("No matching function definition found for {}"
                              .format(method.name))
             else:
-                return self.parent.run_method(method_name, params, intr)
+                return self.parent.run_method(method_name, params, intr, me)
 
     def get_method(self, method_name):
         """
@@ -234,12 +236,12 @@ class ClassInstance():
 
 
 class Variable():
-    def __init__(self, var_type, name, value):
+    def __init__(self, var_type, name, value, intr):
         self.name = name
         self.var_type = var_type
-        self.set_value(value)
+        self.set_value(value, intr)
 
-    def set_value(self, value):
+    def set_value(self, value, intr):
         if isinstance(value, Value):
             self.value = value
         else:
@@ -270,13 +272,20 @@ class Variable():
                               InterpreterBase.STRING_DEF,]:
                 raise TYPE_E("Type mismatch with variable {}"
                              .format(self.name))
+            # cannot assign `null` from a class to an incompatible class
+            elif (self.value.classname is not None and self.value.classname !=
+                    var_type and var_type not in intr.get_class(
+                        self.value.classname).inherits):
+                raise TYPE_E("Type mismatch with variable {}"
+                             .format(self.name))
 
     def __str__(self):
         return self.name + ' ' + str(self.value)
 
 
 class Value():
-    def __init__(self, value, fields):
+    def __init__(self, value, fields, classname=None):
+        self.classname = classname
         if value == InterpreterBase.TRUE_DEF:
             self.value = True
             self.value_type = InterpreterBase.BOOL_DEF
@@ -358,7 +367,8 @@ class Method():
                     default_val = DEFAULT_VALUES[self.return_type]
                     return Value(default_val, {})
                 except KeyError:  # returning a class
-                    return Value(InterpreterBase.NULL_DEF, {})
+                    return Value(InterpreterBase.NULL_DEF, {},
+                                 self.return_type)
             else:
                 # only perform type conversions for booleans?
                 # this weird behavior follows the barista implementation
@@ -370,7 +380,7 @@ class Method():
                 default_val = DEFAULT_VALUES[self.return_type]
                 return Value(default_val, {})
             except KeyError:  # returning a class
-                return Value(InterpreterBase.NULL_DEF, {})
+                return Value(InterpreterBase.NULL_DEF, {}, self.return_type)
 
     def run(self, fields, arguments, intr, me):
         """Returns the `Value` of the called method"""
@@ -387,7 +397,7 @@ class Method():
 
         # check incorrect number of arguments or wrong arg types
         try:
-            scope = fields | {k[1]: Variable(k[0], k[1], v) for (
+            scope = fields | {k[1]: Variable(k[0], k[1], v, intr) for (
                 k, v) in list(zip(self.params, arguments))}
             # ~~^ `k` is [var_type, var_name]
         except TYPE_E:
@@ -509,7 +519,7 @@ class Statement():
                 try:
                     new_value = self.__run_expression(
                         self.params[1], vars, intr, me)
-                    vars[self.params[0]].set_value(new_value)
+                    vars[self.params[0]].set_value(new_value, intr)
                     return Value(InterpreterBase.NULL_DEF, vars), None
                 except KeyError:
                     raise NAME_E("Unknown variable {}".format(self.params[0]))
@@ -534,7 +544,7 @@ class Statement():
                 for var in self.params[0]:
                     if var[1] in temp_vars.keys():
                         raise NAME_E("Duplicate let var {}".format(var[1]))
-                    temp_vars[var[1]] = Variable(var[0], var[1], var[2])
+                    temp_vars[var[1]] = Variable(var[0], var[1], var[2], intr)
 
                     # error if type for new variable is not valid
                     if var[0] not in VARIABLE_RESERVED_TYPES:
@@ -635,6 +645,35 @@ class Statement():
                                 raise TYPE_E(
                                     "Incompatible types for equality operation"
                                 )
+                        if (lhs.value_type == InterpreterBase.CLASS_DEF and
+                                rhs.value_type == InterpreterBase.VOID_DEF):
+                            if (rhs.classname is not None and rhs.classname not
+                                    in lhs.value.inherits and rhs.classname !=
+                                    lhs.value.name and lhs.value.name not in
+                                    intr.get_class(rhs.classname).inherits):
+                                raise TYPE_E(
+                                    "Incompatible types for equality operation"
+                                )
+                        if (rhs.value_type == InterpreterBase.CLASS_DEF and
+                                lhs.value_type == InterpreterBase.VOID_DEF):
+                            if (lhs.classname is not None and lhs.classname not
+                                    in rhs.value.inherits and lhs.classname !=
+                                    rhs.value.name and rhs.value.name not in
+                                    intr.get_class(lhs.classname).inherits):
+                                raise TYPE_E(
+                                    "Incompatible types for equality operation"
+                                )
+                        if (rhs.value_type == lhs.value_type ==
+                                InterpreterBase.VOID_DEF):
+                            if (lhs.classname is not None and rhs.classname is
+                                    not None and lhs.classname != rhs.classname
+                                    and lhs.classname not in intr
+                                    .get_class(rhs.classname).inherits and
+                                    rhs.classname not in intr
+                                    .get_class(lhs.classname).inherits):
+                                raise TYPE_E(
+                                    "Incompatible types for equality operation"
+                                )
                         if operator == '==':
                             return Value(str(lhs.value == rhs.value).lower(),
                                          vars)
@@ -701,7 +740,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program2.brewin') as program_file:
+    with open('program9.lisp') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
