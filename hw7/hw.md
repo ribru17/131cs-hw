@@ -74,3 +74,20 @@ typing already implements logic that either runs methods if they are found, or
 errors if they are not. No information about whether or not they exist is held
 prior to runtime, and interfaces are by definition just contracts that are held
 before runtime that certain objects are guaranteed to implement certain methods.
+
+# 10.
+
+I would prefer interface inheritance when I have classes that aren't necessarily
+subtypes or supertypes of each other, but that still share similar functionality
+("has a" implementation), e.g. a Human and a Car can both be washed but they are
+not necessarily related types. It makes more sense for them to both implement
+some sort of `Washable` interface, rather than having one of them be a supertype
+that has washable methods, or perhaps having another class `Washable` that both
+inherit from. This is especially true if our language does not support multiple
+inheritance: we should not have to choose whether our Car derives from `Vehicle`
+or `Washable`, for example. If we have two classes that **should** both be
+derived from a parent, such as a Car and a Truck that derive from some `Vehicle`
+class, then it would make sense to use subtyping inheritance, using the Car and
+Truck as subtypes of `Vehicle`. This would be helpful because we wouldn't need
+to redefine inherited methods unless needed, and those we don't redefine still
+work because they fall back to the derived methods of the parent.
