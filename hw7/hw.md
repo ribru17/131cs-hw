@@ -48,3 +48,29 @@ that only defined methods can be called: duck typing allows you to call any made
 up method that doesn't exist anywhere (to you demise) while the hacky generic
 approach will only allow to call those methods specified in the hypothetical
 master generic specification.
+
+# 5.
+
+In pre-classes Javascript I think you would have to have some sort of top level
+"constructor" method that returns an object with certain default properties and
+methods, perhaps overriding them with any parameters passed in to the
+constructor.
+
+# 7.
+
+`IShape` cannot be used to instantiate concrete objects: this is because
+concrete objects are stored directly on the stack and an interface specification
+is only a set of rules that must be followed (functions that must be
+implemented); the actual size of the thing that implements the interface is not
+determined by the interface alone, thus we can only assign such a type to a
+pointer which is always of a fixed size, pointing to an object with its own size
+(determined by the actual object which is the implementer of the interface)
+
+# 8.
+
+Interfaces aren't needed in dynamically-typed languages because there is no need
+for a "contract" that a certain object will implement certain methods: duck
+typing already implements logic that either runs methods if they are found, or
+errors if they are not. No information about whether or not they exist is held
+prior to runtime, and interfaces are by definition just contracts that are held
+before runtime that certain objects are guaranteed to implement certain methods.
