@@ -740,7 +740,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program9.lisp') as program_file:
+    with open('program1.lisp') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
