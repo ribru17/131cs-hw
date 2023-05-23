@@ -34,3 +34,17 @@ don't need to. No types are kept track of at compile time (and there usually is
 no "compile time"), meaning that the only way to validate whether a property or
 method exists on a certain object is for the program to check that right before
 it is accessed at runtime, throwing an error if it is not (i.e., duck typing).
+
+# 3.
+
+I think you could create something similar to duck typing by essentially making
+each class inherit from some master generic definition that defines each method,
+but by default makes them throw some sort of type error. Then if any class wants
+to actually implement these functions, it will do so and these derived versions
+will be called and no type errors thrown if they are implemented. In that way
+each function gets its method called regularly, unless it was not implemented in
+which case a type error is thrown (like duck typing). The only difference is
+that only defined methods can be called: duck typing allows you to call any made
+up method that doesn't exist anywhere (to you demise) while the hacky generic
+approach will only allow to call those methods specified in the hypothetical
+master generic specification.
