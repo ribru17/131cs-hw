@@ -35,3 +35,20 @@ This will not work because `A` is not guaranteed to implement all the methods of
     as a parameter for instance) could potentially have derived members whose
     methods should be prioritized over the base class methods. Inheritance and
     subtype polymorphism often make use of dynamic dispatch.
+
+# 4.
+
+We cannot use subtype polymorphism in a dynamically-typed language because
+subtype polymorphism involves contracts that certain classes will implement
+certain methods, thus implementing the interface as a whole. This doesn't make
+sense in dynamically-typed programming languages because we wouldn't specify
+variables or parameters as an interface type because they would not be given a
+type at all (at compile time): subtype polymorphism is redundant and not
+necessary since we will always use duck typing to check whether methods exist in
+a class anyway.
+
+We can, however, use dynamic dispatch in dynamically-typed languages. This is
+because we always need to check (at runtime) for possible methods that exist in
+the base class of a given derived class, as no such information is stored prior
+to runtime. So dynamically-typed languages must use duck typing to call methods,
+which makes use of dynamic dispatch.
