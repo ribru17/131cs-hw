@@ -1,11 +1,14 @@
 (class foo
- (method void blah () (print "ha"))
+ (method void bar ( ) (print "hello"))
 )
 
 (class main
- (method void main ()
-  (let ((foo x null) (main y null))
-    (if (== x y) (print "same"))
+  (method foo f () (return null))
+  (method void main () 
+    (let ((main x null))
+      (set x (call me f))   # main type for x and foo type returned by function f are incompatible
+      (print "reached bad")
+    )
   )
- )
 )
+

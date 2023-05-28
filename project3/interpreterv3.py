@@ -86,12 +86,14 @@ class Interpreter(InterpreterBase):
 
     def __track_classes(self, parsed_program):
         self.classes = {}
+        self.templates = {}
         for class_def in parsed_program:
             if (class_def[0] != InterpreterBase.CLASS_DEF and
                     class_def[0] != InterpreterBase.TEMPLATE_CLASS_DEF):
                 raise SYNTAX_E('Top level definition must be class or tclass')
 
             class_name = class_def[1]
+            is_template = class_def[0] == InterpreterBase.TEMPLATE_CLASS_DEF
 
             # populate fields and classes
             fields = {}
@@ -103,6 +105,8 @@ class Interpreter(InterpreterBase):
             if class_def[2] == InterpreterBase.INHERITS_DEF:
                 check_index = 4
                 inherits.append(class_def[3])
+            elif is_template:
+                check_index = 3
             for item in class_def[check_index:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
                     if item[2] in fields:
@@ -266,6 +270,12 @@ class Variable():
             # use empty dict for fields because we cannot
             # initially set a field to a variable
             self.value = Value(value, {})
+        if self.var_type not in VARIABLE_RESERVED_TYPES:
+            # if (self.value.classname != self.var_type and
+            #         self.value.classname is not None):
+            #     raise TYPE_E("Invalid variable type {}".format(
+            #         self.value.classname))
+            self.value.classname = self.var_type
 
         # checks for all cases except invalid class (to be checked in run)
         var_type = self.var_type
@@ -332,6 +342,7 @@ class Value():
                 try:
                     self.value = fields[value].value.value
                     self.value_type = fields[value].value.value_type
+                    self.classname = fields[value].value.classname
                 except KeyError:
                     # var doesn't exist
                     raise NAME_E("Unknown variable {}".format(value))
@@ -353,6 +364,9 @@ class Method():
     def __run_and_check(self, scope, intr, me):
         return_value, return_trap = self.statement.run(
             scope, intr, me)
+
+        if self.return_type not in METHOD_RESERVED_TYPES:
+            return_value.classname = self.return_type
 
         # exception was uncaught in method
         if return_trap == InterpreterBase.THROW_DEF:
@@ -558,6 +572,10 @@ class Statement():
                         self.params[1], vars, intr, me)
                     if new_value.is_exception:
                         return new_value, InterpreterBase.THROW_DEF
+                    if (new_value.classname != vars[self.params[0]].var_type
+                            and new_value.classname is not None):
+                        raise TYPE_E("Invalid variable type {}".format(
+                            new_value.classname))
                     vars[self.params[0]].set_value(new_value, intr)
                     return Value(InterpreterBase.NULL_DEF, vars), None
                 except KeyError:
@@ -825,7 +843,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program3.scm') as program_file:
+    with open('program2.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
