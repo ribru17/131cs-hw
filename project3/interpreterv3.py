@@ -82,7 +82,20 @@ class Interpreter(InterpreterBase):
         try:
             return self.classes[class_name]
         except KeyError:
-            raise TYPE_E("Unknown class {}".format(class_name))
+            split = class_name.split(InterpreterBase.TYPE_CONCAT_CHAR)
+            if len(split) > 1:
+                # TODO: check for type errors and name errors
+                if split[0] not in self.templates:
+                    raise TYPE_E("Unknown class {}".format(class_name))
+                for passed_type in split[1:]:
+                    if (passed_type not in VARIABLE_RESERVED_TYPES and
+                            passed_type not in self.classes):
+                        raise TYPE_E("Unknown type {}".format(passed_type))
+                self.classes[class_name] = (self.templates[split[0]]
+                                            .construct(split[1:]))
+                return self.classes[class_name]
+            else:
+                raise TYPE_E("Unknown class {}".format(class_name))
 
     def __track_classes(self, parsed_program):
         self.classes = {}
@@ -107,6 +120,7 @@ class Interpreter(InterpreterBase):
                 inherits.append(class_def[3])
             elif is_template:
                 check_index = 3
+                template_types = class_def[2]
             for item in class_def[check_index:]:
                 if item[0] == InterpreterBase.FIELD_DEF:
                     if item[2] in fields:
@@ -143,11 +157,15 @@ class Interpreter(InterpreterBase):
                 else:
                     raise SYNTAX_E("Class member must be a field or method")
 
-            if class_name in self.classes:
+            if class_name in self.classes or class_name in self.templates:
                 raise TYPE_E("Duplicate class {}".format(class_name))
 
-            self.classes[class_name] = Class(self, class_name, fields,
-                                             methods, inherits)
+            if is_template:
+                self.templates[class_name] = Template(
+                    self, class_name, template_types, fields, methods)
+            else:
+                self.classes[class_name] = Class(self, class_name, fields,
+                                                 methods, inherits)
 
     def __validate_class_types(self):
         # make sure fields and methods of a class type have a real class type
@@ -193,6 +211,72 @@ class Interpreter(InterpreterBase):
 
     def __str__(self):
         return str([str(x) for x in self.classes])
+
+
+class Template():
+    def __init__(self, intr, name, types, fields, methods):
+        self.intr = intr
+        self.name = name
+        self.types = types
+        self.fields = fields
+        self.methods = methods
+
+    def construct(self, passed_types):
+        methods = deepcopy(self.methods)
+        fields = deepcopy(self.fields)
+        type_map = dict(zip(self.types, passed_types))
+
+        # type map fields
+        for field in fields.values():
+            split = field.var_type.split(InterpreterBase.TYPE_CONCAT_CHAR)
+            for i in range(len(split)):
+                if split[i] in type_map:
+                    split[i] = type_map[split[i]]
+            field.var_type = InterpreterBase.TYPE_CONCAT_CHAR.join(split)
+
+        for method in methods.values():
+            # type map method return types
+            split = method.return_type.split(InterpreterBase.TYPE_CONCAT_CHAR)
+            for i in range(len(split)):
+                if split[i] in type_map:
+                    split[i] = type_map[split[i]]
+            method.return_type = InterpreterBase.TYPE_CONCAT_CHAR.join(split)
+
+            # type map method parameter types
+            for param in method.params:
+                split = param[0].split(InterpreterBase.TYPE_CONCAT_CHAR)
+                for i in range(len(split)):
+                    if split[i] in type_map:
+                        split[i] = type_map[split[i]]
+                param[0] = InterpreterBase.TYPE_CONCAT_CHAR.join(split)
+
+            self.__map_statements(
+                [method.statement.statement_type] + method.statement.params,
+                type_map)
+
+        return Class(self.intr, InterpreterBase.TYPE_CONCAT_CHAR.join(
+            [self.name] + passed_types), fields, methods, [])
+
+    def __map_statements(self, statement, type_map):
+        match statement[0]:
+            case InterpreterBase.BEGIN_DEF:
+                for line in statement[1:]:
+                    self.__map_statements(line, type_map)
+            case InterpreterBase.WHILE_DEF:
+                for line in statement[2:]:
+                    self.__map_statements(line, type_map)
+            case InterpreterBase.LET_DEF:
+                for decl in statement[1]:
+                    split = decl[0].split(InterpreterBase.TYPE_CONCAT_CHAR)
+                    for i in range(len(split)):
+                        if split[i] in type_map:
+                            split[i] = type_map[split[i]]
+                    decl[0] = InterpreterBase.TYPE_CONCAT_CHAR.join(split)
+                for line in statement[2:]:
+                    self.__map_statements(line, type_map)
+
+    def __str__(self):
+        return 'Template class {} with types {}'.format(self.name, self.types)
 
 
 class Class():
@@ -844,7 +928,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program3.scm') as program_file:
+    with open('program5.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
