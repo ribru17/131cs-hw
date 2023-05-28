@@ -640,8 +640,9 @@ class Statement():
                         return result, returned
                 return Value(InterpreterBase.NULL_DEF, newvars), None
             case InterpreterBase.THROW_DEF:
-                return (Value(self.params[0], vars, is_exception=True),
-                        InterpreterBase.THROW_DEF)
+                expr = self.__run_expression(self.params[0], vars, intr, me)
+                expr.is_exception = True
+                return expr, InterpreterBase.THROW_DEF
             case InterpreterBase.TRY_DEF:
                 try_statement = self.params[0]
                 except_statement = self.params[1]
@@ -843,7 +844,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program2.scm') as program_file:
+    with open('program3.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
