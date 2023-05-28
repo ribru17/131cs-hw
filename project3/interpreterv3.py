@@ -87,8 +87,9 @@ class Interpreter(InterpreterBase):
     def __track_classes(self, parsed_program):
         self.classes = {}
         for class_def in parsed_program:
-            if class_def[0] != InterpreterBase.CLASS_DEF:
-                raise SYNTAX_E('Top level definition must be method')
+            if (class_def[0] != InterpreterBase.CLASS_DEF and
+                    class_def[0] != InterpreterBase.TEMPLATE_CLASS_DEF):
+                raise SYNTAX_E('Top level definition must be class or tclass')
 
             class_name = class_def[1]
 
@@ -384,12 +385,7 @@ class Method():
         if return_trap is not None:
             # if of form `return` and not `return x`
             if return_trap == InterpreterBase.VOID_DEF:
-                try:  # returning a primitive?
-                    default_val = DEFAULT_VALUES[self.return_type]
-                    return Value(default_val, {})
-                except KeyError:  # returning a class
-                    return Value(InterpreterBase.NULL_DEF, {},
-                                 self.return_type)
+                return self.__return_wrapper()
             else:
                 # only perform type conversions for booleans?
                 # this weird behavior follows the barista implementation
@@ -397,11 +393,14 @@ class Method():
                     return Value(InterpreterBase.FALSE_DEF, {})
                 return return_value
         else:
-            try:  # returning a primitive?
-                default_val = DEFAULT_VALUES[self.return_type]
-                return Value(default_val, {})
-            except KeyError:  # returning a class
-                return Value(InterpreterBase.NULL_DEF, {}, self.return_type)
+            return self.__return_wrapper()
+
+    def __return_wrapper(self):
+        try:  # returning a primitive?
+            default_val = DEFAULT_VALUES[self.return_type]
+            return Value(default_val, {})
+        except KeyError:  # returning a class
+            return Value(InterpreterBase.NULL_DEF, {}, self.return_type)
 
     def run(self, fields, arguments, intr, me):
         """Returns the `Value` of the called method"""
@@ -826,7 +825,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program4.scm') as program_file:
+    with open('program3.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
