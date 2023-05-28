@@ -84,13 +84,15 @@ class Interpreter(InterpreterBase):
         except KeyError:
             split = class_name.split(InterpreterBase.TYPE_CONCAT_CHAR)
             if len(split) > 1:
-                # TODO: check for type errors and name errors
                 if split[0] not in self.templates:
                     raise TYPE_E("Unknown class {}".format(class_name))
                 for passed_type in split[1:]:
                     if (passed_type not in VARIABLE_RESERVED_TYPES and
                             passed_type not in self.classes):
                         raise TYPE_E("Unknown type {}".format(passed_type))
+                if len(split[1:]) != len(self.templates[split[0]].types):
+                    raise TYPE_E("Incorrect number of types passed to {}"
+                                 .format(split[0]))
                 self.classes[class_name] = (self.templates[split[0]]
                                             .construct(split[1:]))
                 return self.classes[class_name]
@@ -221,6 +223,9 @@ class Template():
         self.fields = fields
         self.methods = methods
 
+    # TODO: when constructing make sure that the constructed values are valid
+    # e.g. a template with two input types with a field that points to itself
+    # cannot be node@int because it takes two types. see program5.scm
     def construct(self, passed_types):
         methods = deepcopy(self.methods)
         fields = deepcopy(self.fields)
