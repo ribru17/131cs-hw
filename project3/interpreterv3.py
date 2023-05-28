@@ -107,8 +107,25 @@ class Interpreter(InterpreterBase):
                     if item[2] in fields:
                         raise NAME_E("Duplicate field {}".format(item[2]))
 
-                    fields[item[2]] = Variable(
-                        item[1], item[2], item[3], self)
+                    # normal initialization
+                    if len(item) == 4:
+                        fields[item[2]] = Variable(
+                            item[1], item[2], item[3], self)
+                    # optional value initialization
+                    elif len(item) == 3:
+                        match item[1]:
+                            case InterpreterBase.INT_DEF:
+                                value = '0'
+                            case InterpreterBase.STRING_DEF:
+                                value = '""'
+                            case InterpreterBase.BOOL_DEF:
+                                value = 'false'
+                            case _:  # class name or null
+                                value = InterpreterBase.NULL_DEF
+                        fields[item[2]] = Variable(
+                            item[1], item[2], value, self)
+                    else:
+                        raise SYNTAX_E("Wrong number of field params")
 
                 elif item[0] == InterpreterBase.METHOD_DEF:
                     if item[2] in methods:
@@ -571,7 +588,23 @@ class Statement():
                 for var in self.params[0]:
                     if var[1] in temp_vars.keys():
                         raise NAME_E("Duplicate let var {}".format(var[1]))
-                    temp_vars[var[1]] = Variable(var[0], var[1], var[2], intr)
+                    # initialize normally
+                    if len(var) == 3:
+                        temp_vars[var[1]] = Variable(
+                            var[0], var[1], var[2], intr)
+                    # initialize with default value
+                    elif len(var) == 2:
+                        match var[0]:
+                            case InterpreterBase.INT_DEF:
+                                value = '0'
+                            case InterpreterBase.STRING_DEF:
+                                value = '""'
+                            case InterpreterBase.BOOL_DEF:
+                                value = 'false'
+                            case _:  # class name or null
+                                value = InterpreterBase.NULL_DEF
+                        temp_vars[var[1]] = Variable(
+                            var[0], var[1], value, intr)
 
                     # error if type for new variable is not valid
                     if var[0] not in VARIABLE_RESERVED_TYPES:
@@ -793,7 +826,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program3.scm') as program_file:
+    with open('program4.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
