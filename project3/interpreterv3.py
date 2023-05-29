@@ -744,8 +744,11 @@ class Statement():
                         InterpreterBase.EXCEPTION_VARIABLE_DEF, result, intr)
                     vars_with_except |= {
                         InterpreterBase.EXCEPTION_VARIABLE_DEF: except_var}
-                    Statement(except_statement[0], except_statement[1:]).run(
+                    result, return_trap = Statement(except_statement[0],
+                                                    except_statement[1:]).run(
                         vars_with_except, intr, me)
+                    if return_trap == InterpreterBase.THROW_DEF:
+                        return result, return_trap
                 return Value(InterpreterBase.NULL_DEF, vars), None
             case other:
                 raise SYNTAX_E("Unknown statement {}".format(other))
@@ -933,7 +936,7 @@ class Statement():
 
 
 if __name__ == '__main__':
-    with open('program5.scm') as program_file:
+    with open('program7.scm') as program_file:
         program = program_file.readlines()
 
     interpreter = Interpreter()
