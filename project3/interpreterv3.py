@@ -747,8 +747,10 @@ class Statement():
                     result, return_trap = Statement(except_statement[0],
                                                     except_statement[1:]).run(
                         vars_with_except, intr, me)
-                    if return_trap == InterpreterBase.THROW_DEF:
+                    if return_trap is not None:
                         return result, return_trap
+                elif return_trap is not None:
+                    return result, return_trap
                 return Value(InterpreterBase.NULL_DEF, vars), None
             case other:
                 raise SYNTAX_E("Unknown statement {}".format(other))
