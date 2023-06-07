@@ -92,3 +92,44 @@ def forEach(self, func):
     for i in self:
         func(i)
 ```
+
+# 3.
+
+## a)
+
+`green`
+
+## b)
+
+`false`
+
+## c)
+
+`tomato` then `beet`
+
+## d)
+
+This will just list all facts in the order they are given, i.e.:
+
+```
+Q = celery,
+R = green
+Q = tomato,
+R = red
+Q = persimmon,
+R = orange
+Q = beet,
+R = red
+Q = lettuce,
+R = green
+```
+
+# 4.
+
+## a)
+
+`likes_red(Q) :- likes(Q, F), color(F, red), food(F).`
+
+## b)
+
+`likes_foods_of_colors_that_menachen_likes(Q) :- likes(Q, F), food(F), color(F, C), likes(menachen, P), food(P), color(P, C).`
