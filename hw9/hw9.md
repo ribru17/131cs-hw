@@ -175,3 +175,17 @@ insert_lex(X,[Y|T],[Y|NT]) :- X > Y, insert_lex(X,T,NT).
 count_elem([], Total, Total).
 count_elem([Hd|Tail], Sum, Total) :- Sum1 is Sum + 1, count_elem(Tail, Sum1, Total).
 ```
+
+# 9.
+
+```prolog
+gen_list(_, 0, []).
+gen_list(Value, N, [Value|List]) :- N1 is N - 1, gen_list(Value, N1, List).
+```
+
+# 10.
+
+```prolog
+append_item([], Item, [Item]).
+append_item([Head|Tail], Item, [Head|NewTail]) :- append_item(Tail, Item, NewTail).
+```
