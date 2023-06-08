@@ -133,3 +133,45 @@ R = green
 ## b)
 
 `likes_foods_of_colors_that_menachen_likes(Q) :- likes(Q, F), food(F), color(F, C), likes(menachen, P), food(P), color(P, C).`
+
+# 5.
+
+```prolog
+is_same(X, X).
+
+reachable(P, Q) :- road_between(P, Q); road_between(Q, P).
+reachable(P, Q) :- road_between(P, L), not(is_same(P, L)), reachable(L, Q), not(is_same(P, Q)).
+```
+
+# 6.
+
+- This does unify: `X -> bar`
+- This does not unify: the two functions have different arities.
+- This does unify: `Z <-> X`
+- This does unify: `X -> barf, Y -> bletch`
+- This does not unify: `barf` and `bletch` do not match.
+- This does unify: `X -> bar, Y -> barf`
+- This does unify: `Y -> bar(a,Z)`
+- This does not unify: `barf` and `bletch` do not match.
+- This does unify: `Q -> [A,B|C]`
+- This does not unify: `a` is not the same as a list of `a`.
+
+# 7.
+
+```prolog
+% adds a new value X to an empty list
+insert_lex(X,[],[X]).
+% the new value is < all values in list
+insert_lex(X,[Y|T],[X,Y|T]) :- X =< Y.
+% adds somewhere in middle
+insert_lex(X,[Y|T],[Y|NT]) :- X > Y, insert_lex(X,T,NT).
+```
+
+# 8.
+
+```prolog
+% count_elem(List, Accumulator, Total)
+% Accumulator must always start at zero
+count_elem([], Total, Total).
+count_elem([Hd|Tail], Sum, Total) :- Sum1 is Sum + 1, count_elem(Tail, Sum1, Total).
+```
